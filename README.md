@@ -56,7 +56,7 @@ The easiest route is to point your coding agent at [this repository](https://git
 
 > Install ClaudeThing.ai on my USB-connected Spotify Car Thing. Follow `INSTALL.md` and the repository safety rules, verify the host and device at each stage, preserve a complete factory backup, and stop before flashing until I explicitly approve the exact artifact, byte size, and SHA-256.
 
-The repository gives the agent concrete checks and safety stops for each stage. It can inspect compatibility, install the host collector, build and verify firmware, configure the dashboard, qualify the USB connection, and provision the device after an approved flash. You remain in control of the one consequential step: choosing and approving the exact firmware artifact. Prefer doing it yourself? The same complete path is in [INSTALL.md](INSTALL.md).
+The repository gives the agent concrete checks and safety stops for each stage. It can inspect compatibility, install the host collector, build and verify firmware, configure the dashboard, qualify the USB connection, and provision the device after an approved flash. Prefer doing it yourself? The same complete path is in [INSTALL.md](INSTALL.md).
 
 ## See it in action
 
