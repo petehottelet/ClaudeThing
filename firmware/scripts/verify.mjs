@@ -19,7 +19,7 @@ const required = [
   "firmware/meta-claudething/recipes-bsp/superbird-logo/files/claudething-bootup.bmp",
   "firmware/meta-claudething/recipes-graphics/weston-init/superbird-weston-init_%.bbappend",
   "firmware/meta-claudething/recipes-graphics/weston-init/files/claudething-splash.png",
-  "firmware/meta-claudething/recipes-claudething/claudething-ui/claudething-ui_0.1.0.bb",
+  "firmware/meta-claudething/recipes-claudething/claudething-ui/claudething-ui_1.0.0.bb",
   "firmware/meta-claudething/recipes-claudething/claudething-ui/files/claudething-ui.service",
   "firmware/meta-claudething/recipes-graphics/chromium-kiosk/files/claudething-ui-ready",
 ];

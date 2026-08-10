@@ -30,7 +30,7 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import { FIXTURE_NAMES, type FixtureName } from "@carthing/contracts/fixtures";
 
-export const COLLECTOR_VERSION = "0.1.0";
+export const COLLECTOR_VERSION = "1.0.0";
 
 export interface CollectorConfig {
   port: number;
