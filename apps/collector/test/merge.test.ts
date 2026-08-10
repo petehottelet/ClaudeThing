@@ -56,6 +56,25 @@ describe("quota merge", () => {
     expect(merged.snapshot.host).toBe("pc");
   });
 
+  it("keeps Claude OAuth account quotas authoritative over fresher status-line limits", () => {
+    const merged = mergeProvider(
+      [
+        {
+          provider: obs({ source: "oauth", observedAt: iso(-240), quotaWindows: [window(100)] }),
+          receivedAtMs: NOW,
+        },
+        {
+          provider: obs({ source: "statusline", observedAt: iso(-1), quotaWindows: [window(0)] }),
+          receivedAtMs: NOW,
+        },
+      ],
+      { nowMs: NOW },
+    );
+    expect(merged.snapshot.quotaWindows[0]?.usedPercent).toBe(100);
+    expect(merged.snapshot.source).toBe("oauth");
+    expect(merged.snapshot.observedAt).toBe(iso(-240));
+  });
+
   it("keeps richer app-server windows while a fresher rollout updates their shared limit", () => {
     const weekly = (id: string, label: string, usedPercent: number) => ({
       id,

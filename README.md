@@ -78,7 +78,7 @@ The repository gives the agent concrete checks and safety stops for each stage. 
 
 | Claude usage | Codex usage | System status |
 | --- | --- | --- |
-| <img src="docs/media/claude-detail.png" alt="Claude current and weekly usage dashboard" /> | <img src="docs/media/codex-detail.png" alt="Codex current usage, resets, and account facts dashboard" /> | <img src="docs/media/system.png" alt="ClaudeThing host, device, pairing, and telemetry status" /> |
+| <img src="docs/media/claude-detail.png" alt="Claude current session, all-model, and Fable usage dashboard" /> | <img src="docs/media/codex-detail.png" alt="Codex current usage, resets, and account facts dashboard" /> | <img src="docs/media/system.png" alt="ClaudeThing host, device, pairing, and telemetry status" /> |
 
 The rotary dial changes Daily, Weekly, Monthly, and Year ranges inside YouTube and GA4. Market views rotate automatically through the configured stocks, funds, and indexes; turning the dial switches immediately. The screenshots show the same dark 800×480 UI shipped in the device bundle.
 

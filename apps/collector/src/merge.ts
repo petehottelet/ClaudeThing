@@ -100,6 +100,16 @@ function tokenPriority(source: string | null): number {
   return (source !== null ? TOKEN_SOURCE_PRIORITY[source] : undefined) ?? 1;
 }
 
+/** Claude's account endpoint owns quota percentages. The status-line hook is
+ * faster, but its rate-limit payload may describe a different surface and
+ * must not overwrite the account bars between five-minute OAuth polls. */
+function quotaPriority(provider: ProviderSnapshot): number {
+  if (provider.id !== "claude") return 1;
+  if (provider.source === "oauth") return 3;
+  if (provider.source === "statusline") return 2;
+  return 1;
+}
+
 function sumField(summaries: TokenSummary[], get: (t: TokenSummary) => number | null): number | null {
   let acc: number | null = null;
   for (const t of summaries) {
@@ -115,7 +125,10 @@ export function mergeProvider(observations: ObservationInput[], opts: MergeOptio
   }
   const eff = observations.map(toEffective);
   const sorted = [...eff].sort((a, b) => (b.observedAtMs ?? -1) - (a.observedAtMs ?? -1));
-  const quotaWinner = sorted.find((e) => e.provider.quotaWindows.length > 0) ?? null;
+  const quotaSorted = [...eff].sort((a, b) =>
+    quotaPriority(b.provider) - quotaPriority(a.provider) ||
+    (b.observedAtMs ?? -1) - (a.observedAtMs ?? -1));
+  const quotaWinner = quotaSorted.find((e) => e.provider.quotaWindows.length > 0) ?? null;
   const base = quotaWinner ?? sorted[0]!;
 
   // Diagnostics are unioned across every surface — a failing adapter's code
@@ -128,12 +141,12 @@ export function mergeProvider(observations: ObservationInput[], opts: MergeOptio
   }
   if (quotaWinner?.skewed) diagnostics.add("CLOCK_SKEW");
 
-  // Merge by stable window id. Iterating newest-first makes the first value
-  // authoritative for duplicate ids, while the lag bound retains additional
-  // limits from a slightly older richer surface (normally app-server).
+  // Merge by stable window id. Provider authority wins first for Claude;
+  // other providers preserve freshest-first behavior. The lag bound retains
+  // additional limits from a slightly older richer surface.
   const windowsById = new Map<string, QuotaWindow>();
   const newestQuotaMs = quotaWinner?.observedAtMs ?? null;
-  for (const observation of sorted) {
+  for (const observation of quotaSorted) {
     if (observation.provider.quotaWindows.length === 0) continue;
     if (
       newestQuotaMs !== null &&

@@ -92,39 +92,41 @@ function prettyKind(kind: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+function scopedLimitName(entry: Record<string, unknown>): string {
+  const scope = isObject(entry.scope) ? entry.scope : null;
+  const model = scope && isObject(scope.model) ? scope.model : null;
+  const displayName = model && typeof model.display_name === "string" ? model.display_name.trim() : "";
+  const modelId = model && typeof model.id === "string" ? model.id.trim() : "";
+  return (displayName || modelId || "Scoped limit").slice(0, 48);
+}
+
+function stableLimitId(label: string): string {
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return `oauth_weekly_scoped_${(slug || "limit").slice(0, 40)}`;
+}
+
 /** Parse the usage response into quota windows; unknown shapes yield []. */
 export function parseOauthUsage(raw: unknown): QuotaWindow[] {
   if (!isObject(raw)) return [];
   const windows: QuotaWindow[] = [];
-  const five = windowFrom(raw.five_hour, "five_hour", "Current", FIVE_HOUR_SECONDS);
-  const seven = windowFrom(raw.seven_day, "seven_day", "Weekly", SEVEN_DAY_SECONDS);
+  const five = windowFrom(raw.five_hour, "five_hour", "Current session", FIVE_HOUR_SECONDS);
+  const seven = windowFrom(raw.seven_day, "seven_day", "All models", SEVEN_DAY_SECONDS);
   if (five) windows.push(five);
   if (seven) windows.push(seven);
 
-  // Additional named limits ride along after the two card windows. When the
-  // provider marks a scoped weekly cap active, that cap is the effective
-  // Weekly constraint shown by the first-party app. Promote it to the
-  // canonical seven_day slot and retain the aggregate as Weekly all for the
-  // detail view. "session" and "weekly_all" otherwise duplicate the headline
-  // fields and are skipped.
+  // The provider repeats the first two windows in `limits`; skip those exact
+  // duplicates. Scoped weekly entries are distinct model/surface allowances
+  // and must remain separately labeled instead of replacing All models.
   if (Array.isArray(raw.limits)) {
     for (const entry of raw.limits.slice(0, 16)) {
       if (!isObject(entry)) continue;
       const kind = typeof entry.kind === "string" ? entry.kind.trim() : "";
       if (!kind || kind === "session" || kind === "weekly_all") continue;
       const group = typeof entry.group === "string" ? entry.group : "";
-      if (kind === "weekly_scoped" && entry.is_active === true) {
-        const active = windowFrom(entry, "seven_day", "Weekly", SEVEN_DAY_SECONDS);
-        if (active) {
-          const aggregateIndex = windows.findIndex((window) => window.id === "seven_day");
-          if (aggregateIndex >= 0) {
-            const aggregate = windows[aggregateIndex]!;
-            windows[aggregateIndex] = active;
-            windows.push({ ...aggregate, id: "oauth_weekly_all", label: "Weekly all" });
-          } else {
-            windows.push(active);
-          }
-        }
+      if (kind === "weekly_scoped") {
+        const label = scopedLimitName(entry);
+        const scoped = windowFrom(entry, stableLimitId(label), label, SEVEN_DAY_SECONDS);
+        if (scoped && scoped.usedPercent !== null) windows.push(scoped);
         continue;
       }
       const win = windowFrom(

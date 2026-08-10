@@ -79,6 +79,7 @@ export function meterPageCount(p: ProviderSnapshot, metrics: ProviderDisplayMetr
     : 0;
   if (!metrics.includes("quota")) return factsPages;
   if (factsPages > 0) return factsPages + Math.ceil(Math.max(0, quotaWindows.length - 1) / 2);
+  if (p.id === "claude" && quotaWindows.length > 0 && quotaWindows.length <= 3) return 1;
   return Math.max(1, Math.ceil(quotaWindows.length / 2));
 }
 
@@ -165,6 +166,7 @@ export function ProviderDetail({ provider: p, now, linkDown, windowPage, timeZon
   const safePage = page % pageCount;
   const quotaVisible = metrics.includes("quota");
   const factsVisible = hasFactsPage(metrics);
+  const showAllClaudeLimits = p.id === "claude" && quotaWindows.length > 0 && quotaWindows.length <= 3 && !factsVisible;
   const headline = currentPeriodWindow(quotaWindows);
   const factsPages = factsVisible
     ? usageFactsPageCount({
@@ -185,6 +187,8 @@ export function ProviderDetail({ provider: p, now, linkDown, windowPage, timeZon
       ? [headline]
       : missing
         ? placeholderWindows()
+        : showAllClaudeLimits
+          ? quotaWindows
         : padWindows(
             factsVisible
               ? additionalWindows.slice((safePage - factsPages) * 2, (safePage - factsPages) * 2 + 2)
@@ -213,9 +217,15 @@ export function ProviderDetail({ provider: p, now, linkDown, windowPage, timeZon
         </span>
       </div>
 
-      <div className={factsVisible && safePage < factsPages ? "detail-meters codex-facts-layout" : "detail-meters"}>
+      <div className={
+        factsVisible && safePage < factsPages
+          ? "detail-meters codex-facts-layout"
+          : showAllClaudeLimits
+            ? "detail-meters three-limit-layout"
+            : "detail-meters"
+      }>
         {quotaVisible && windows.map((w) => (
-          <Meter key={w.id} window={w} now={now} degraded={degraded} />
+          <Meter key={w.id} window={w} now={now} degraded={degraded} compact={showAllClaudeLimits} />
         ))}
         {factsVisible && safePage < factsPages && (
           <UsageFactsPanel

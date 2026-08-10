@@ -614,6 +614,34 @@ body {
   margin-top: 7px;
 }
 
+/* Claude exposes three useful account bars: current session, all models, and
+   a named scoped limit such as Fable. Keep all three glanceable together. */
+.detail-meters.three-limit-layout .meter {
+  padding: 8px 16px 7px;
+}
+
+.detail-meters.three-limit-layout .meter + .meter {
+  margin-top: 7px;
+}
+
+.detail-meters.three-limit-layout .meter-pct {
+  font-size: 34px;
+}
+
+.detail-meters.three-limit-layout .meter-pct .pct-sign {
+  font-size: 22px;
+}
+
+.detail-meters.three-limit-layout .bar {
+  height: 9px;
+  margin-top: 6px;
+}
+
+.detail-meters.three-limit-layout .meter-reset {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
 .codex-facts-layout .meter {
   padding-top: 11px;
   padding-bottom: 10px;

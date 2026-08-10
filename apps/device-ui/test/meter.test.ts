@@ -158,14 +158,15 @@ describe("displayQuotaWindows", () => {
     ).toEqual([expect.objectContaining({ id: "codex:primary", label: "Current period", usedPercent: 7 })]);
   });
 
-  it("deduplicates Claude's overlapping weekly observations", () => {
+  it("keeps Claude current, all-model, and named model allowances distinct", () => {
     expect(
       displayQuotaWindows("claude", [
         win({ id: "five_hour", label: "Current", windowSeconds: 18_000, usedPercent: 12 }),
-        win({ id: "seven_day", label: "Weekly", usedPercent: 62 }),
+        win({ id: "seven_day", label: "All models", usedPercent: 62 }),
         win({ id: "oauth_weekly_all", label: "Weekly all", usedPercent: 62 }),
+        win({ id: "oauth_weekly_scoped_fable", label: "Fable", usedPercent: 58 }),
       ]).map((window) => window.id),
-    ).toEqual(["five_hour", "seven_day"]);
+    ).toEqual(["five_hour", "seven_day", "oauth_weekly_scoped_fable"]);
   });
 });
 

@@ -27,13 +27,32 @@ const USAGE_BODY = {
 };
 
 describe("parseOauthUsage", () => {
-  it("promotes the active scoped cap to Weekly and retains the all-model aggregate", () => {
+  it("keeps current, all-model, and named scoped allowances as distinct bars", () => {
     const windows = parseOauthUsage(USAGE_BODY);
-    expect(windows.map((w) => w.id)).toEqual(["five_hour", "seven_day", "oauth_weekly_all"]);
-    expect(windows[0]).toMatchObject({ label: "Current", usedPercent: 4, windowSeconds: 18000 });
-    expect(windows[1]).toMatchObject({ label: "Weekly", usedPercent: 99, windowSeconds: 604800 });
-    expect(windows[2]).toMatchObject({ label: "Weekly all", usedPercent: 61, windowSeconds: 604800 });
-    expect(windows[2]?.resetsAt).toBe("2026-08-11T06:00:00.443Z");
+    expect(windows.map((w) => w.id)).toEqual(["five_hour", "seven_day", "oauth_weekly_scoped_scoped_limit"]);
+    expect(windows[0]).toMatchObject({ label: "Current session", usedPercent: 4, windowSeconds: 18000 });
+    expect(windows[1]).toMatchObject({ label: "All models", usedPercent: 61, windowSeconds: 604800 });
+    expect(windows[2]).toMatchObject({ label: "Scoped limit", usedPercent: 99, windowSeconds: 604800 });
+    expect(windows[1]?.resetsAt).toBe("2026-08-11T06:00:00.443Z");
+  });
+
+  it("uses the provider's model display name for a scoped weekly allowance", () => {
+    const windows = parseOauthUsage({
+      five_hour: { utilization: 100 },
+      seven_day: { utilization: 30 },
+      limits: [{
+        kind: "weekly_scoped",
+        group: "weekly",
+        percent: 58,
+        scope: { model: { id: null, display_name: "Fable" } },
+        is_active: true,
+      }],
+    });
+    expect(windows).toMatchObject([
+      { id: "five_hour", label: "Current session", usedPercent: 100 },
+      { id: "seven_day", label: "All models", usedPercent: 30 },
+      { id: "oauth_weekly_scoped_fable", label: "Fable", usedPercent: 58 },
+    ]);
   });
 
   it("yields nothing for garbage", () => {

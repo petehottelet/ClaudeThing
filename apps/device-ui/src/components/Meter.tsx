@@ -118,12 +118,19 @@ export function currentPeriodWindow(windows: QuotaWindow[]): QuotaWindow {
 }
 
 /** Provider headline quotas deliberately exclude duplicate telemetry scopes.
- * The collector retains every observed limit; the default device view shows
- * Claude Current/Weekly and Codex's account-wide all-model period only. */
+ * Claude keeps its current, all-model, and named model allowances distinct;
+ * Codex keeps its account-wide all-model period only. */
 export function displayQuotaWindows(providerId: string, windows: QuotaWindow[]): QuotaWindow[] {
   if (windows.length === 0) return [];
   if (providerId === "claude") {
-    return cardWindows(windows).filter((window) => !window.id.startsWith("ph_"));
+    const byId = new Map(windows.map((window) => [window.id, window]));
+    const ordered = [byId.get("five_hour"), byId.get("seven_day")]
+      .filter((window): window is QuotaWindow => window !== undefined);
+    for (const window of windows) {
+      if (window.id === "five_hour" || window.id === "seven_day" || window.id === "oauth_weekly_all") continue;
+      ordered.push(window);
+    }
+    return ordered;
   }
   if (providerId === "codex") return [currentPeriodWindow(windows)];
   return windows;
