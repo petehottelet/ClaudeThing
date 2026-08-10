@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "packages", "contracts", "src", "provider-catalog.json");
 const destination = path.join(root, "docs", "PROVIDER_CATALOG.md");
+const readmePath = path.join(root, "README.md");
 const configTemplate = path.join(root, "install", "dashboard-config.example.jsonc");
 const catalog = JSON.parse(await readFile(source, "utf8"));
 
@@ -52,10 +53,34 @@ const lines = [
   "",
 ];
 const expected = lines.join("\n");
+const readmeStart = "<!-- provider-catalog:start -->";
+const readmeEnd = "<!-- provider-catalog:end -->";
+const readmeBlock = [
+  readmeStart,
+  "| Provider | Connection | What it can show |",
+  "| --- | --- | --- |",
+  ...catalog.map((provider) =>
+    `| ${provider.displayName} (\`${provider.id}\`) | ${provider.integration === "native" ? "Native collector" : "JSON bridge"} | ${provider.description} |`,
+  ),
+  readmeEnd,
+].join("\n");
+
+function replaceReadmeCatalog(input) {
+  const start = input.indexOf(readmeStart);
+  const end = input.indexOf(readmeEnd);
+  if (start < 0 || end < start) {
+    throw new Error("README provider catalog markers are missing or out of order");
+  }
+  return input.slice(0, start) + readmeBlock + input.slice(end + readmeEnd.length);
+}
+
+const currentReadme = await readFile(readmePath, "utf8");
+const expectedReadme = replaceReadmeCatalog(currentReadme);
 
 if (process.argv.includes("--write")) {
   await writeFile(destination, expected, "utf8");
-  console.log(`provider catalog: wrote ${catalog.length} entries`);
+  await writeFile(readmePath, expectedReadme, "utf8");
+  console.log(`provider catalog: wrote ${catalog.length} entries to the guide and README`);
 } else {
   let actual = "";
   try {
@@ -66,5 +91,8 @@ if (process.argv.includes("--write")) {
   if (actual !== expected) {
     throw new Error("docs/PROVIDER_CATALOG.md is stale; run node tools/provider-catalog.mjs --write");
   }
-  console.log(`provider catalog: ${catalog.length} unique descriptions verified`);
+  if (currentReadme !== expectedReadme) {
+    throw new Error("README provider catalog is stale; run node tools/provider-catalog.mjs --write");
+  }
+  console.log(`provider catalog: ${catalog.length} unique descriptions verified in the guide and README`);
 }
