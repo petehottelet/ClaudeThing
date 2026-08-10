@@ -86,13 +86,14 @@ The rotary dial changes Daily, Weekly, Monthly, and Year ranges inside YouTube a
 
 - Claude quota windows from the local CLI login and status-line payloads, plus persisted last-valid state and local token summaries.
 - Codex subscription windows, reset-credit availability, reset timing, and account usage facts from its local app server, plus detailed token classes from local rollout records.
+- Self-updating account data: Codex account usage refreshes every minute (and on rate-limit notifications), Claude quota usage refreshes on a five-minute base cadence, and local Claude/Codex activity records are read every 15 seconds. Changes stream to the display over WebSocket without a page reload.
 - Native Cursor, Gemini, Droid, and Copilot collectors, enabled only when selected, with plan identity, every available quota bucket, extra usage/overage, balances, costs, and provider-specific history where the signed-in account exposes them.
 - A [65-provider catalog](docs/PROVIDER_CATALOG.md), with a unique explanation for every source, plus a validated JSON bridge for provider APIs, CLIs, scripts, and agent-written integrations. Unknown providers can use the same bridge contract without a firmware rebuild.
 - Honest live, stale, unavailable, error, and offline states; missing data never becomes a fabricated zero.
 - Authenticated HTTP/WebSocket transport, USB reverse-tunnel recovery, multi-host merge rules, and an aged device cache.
 - Touch, horizontal swipes, rotary dial, dial press, Back, presets, and a System screen.
 - An original Yocto product layer with ClaudeThing identity, boot artwork, loopback HTTP service, browser readiness gate, and development/production image recipes.
-- Host time-zone provisioning so the device clock and calendar buckets follow the attached computer, including daylight-saving changes.
+- Host time-zone provisioning plus identity-guarded clock repair on USB reconnect, so the device clock and calendar buckets follow the attached computer, including daylight-saving changes.
 - A dashboard gallery with a seven-day AI usage chart, YouTube channel views, GA4 active users, and configurable individual/index/fund market charts. The dial switches Daily/Weekly/Monthly/Year within YouTube and GA4. Markets rotate automatically at the configured cadence; turning the dial changes the instrument immediately and restarts the timer.
 - A hot-reloaded `dashboard-config.jsonc` controls provider order/visibility/data lanes, YouTube and GA4 display identifiers, market instruments, and rotation timing. Invalid edits retain the last valid configuration. The included analytics and market series demonstrate the views until authenticated host adapters provide live data; credentials remain off-device and out of this display config.
 

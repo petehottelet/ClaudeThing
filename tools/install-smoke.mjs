@@ -54,7 +54,7 @@ try {
     { encoding: "utf8", mode: 0o600 },
   );
 
-  const first = run();
+  const first = run(["--adb-command", "/opt/example/adb", "--adb-serial", "SMOKE-CARTHING"]);
   if (first.status !== 0) throw new Error(first.stderr || first.stdout || "installer failed");
   if (first.stdout.includes(token)) throw new Error("installer exposed the pairing token in routine output");
   if ((await readFile(path.join(installRoot, "pairing.token"), "utf8")).trim() !== token) {
@@ -62,7 +62,12 @@ try {
   }
   await stat(path.join(installRoot, "collector", "collector.cjs"));
   await stat(path.join(installRoot, "device-ui", "index.html"));
-  await stat(path.join(installRoot, "install-manifest.json"));
+  const installManifest = path.join(installRoot, "install-manifest.json");
+  await stat(installManifest);
+  const firstManifest = JSON.parse(await readFile(installManifest, "utf8"));
+  if (firstManifest.adbCommand !== "/opt/example/adb" || firstManifest.adbSerial !== "SMOKE-CARTHING") {
+    throw new Error("installer did not persist the ADB startup configuration");
+  }
   const dashboardConfig = path.join(installRoot, "dashboard-config.jsonc");
   await stat(dashboardConfig);
   const dashboardCatalog = path.join(installRoot, "dashboard-config.catalog.jsonc");
@@ -84,6 +89,10 @@ try {
 
   const second = run();
   if (second.status !== 0) throw new Error("idempotent reinstall failed");
+  const secondManifest = JSON.parse(await readFile(installManifest, "utf8"));
+  if (secondManifest.adbCommand !== firstManifest.adbCommand || secondManifest.adbSerial !== firstManifest.adbSerial) {
+    throw new Error("idempotent reinstall lost the ADB startup configuration");
+  }
   if (!(await readFile(dashboardConfig, "utf8")).includes('"rotationSeconds": 17')) {
     throw new Error("reinstall replaced the human-edited dashboard config");
   }

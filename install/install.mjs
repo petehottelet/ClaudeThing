@@ -55,6 +55,13 @@ function localAddresses() {
   return [...new Set(values)];
 }
 
+function discoverCommand(system, name) {
+  const lookup = system === "win32" ? "where.exe" : "/usr/bin/which";
+  const result = spawnSync(lookup, [name], { encoding: "utf8", windowsHide: true });
+  if (result.status !== 0) return null;
+  return result.stdout.split(/\r?\n/).map((value) => value.trim()).find(Boolean) ?? null;
+}
+
 async function writeAtomic(file, value, mode) {
   const temporary = `${file}.tmp`;
   await writeFile(temporary, value, { encoding: "utf8", mode });
@@ -91,7 +98,7 @@ if (args.has("help")) {
   --show-pairing-url           print a secret-bearing browser pairing URL
   --configure-firewall         add a Windows private-network inbound rule
   --no-adb                     disable automatic USB tunnel recovery
-  --adb-command FILE           custom ADB executable
+  --adb-command FILE           custom ADB executable (auto-detected when available)
   --adb-serial ID              select one ADB device
   --no-codex-appserver         disable Codex quota-window collection
   --codex-command COMMAND      override the Codex app-server command
@@ -167,6 +174,14 @@ const dashboardConfigFile = args.get("dashboard-config")
   : join(installRoot, "dashboard-config.jsonc");
 const providerDirectory = join(dirname(dashboardConfigFile), "providers");
 const dashboardCatalogFile = join(dirname(dashboardConfigFile), "dashboard-config.catalog.jsonc");
+const installManifestFile = join(installRoot, "install-manifest.json");
+let previousInstallManifest = {};
+try {
+  const parsed = JSON.parse(await readFile(installManifestFile, "utf8"));
+  if (parsed?.product === "carthing-usage-dashboard" && parsed.version === 1) previousInstallManifest = parsed;
+} catch {
+  // First install or an invalid legacy manifest that should not influence it.
+}
 const pairingTokenFile = args.get("pairing-token-file")
   ? resolve(args.get("pairing-token-file"))
   : null;
@@ -285,8 +300,13 @@ const collectorArgs = [
 ];
 if (peer) collectorArgs.push("--peer", peer, "--peer-host", peerHost);
 if (args.has("no-adb")) collectorArgs.push("--no-adb");
-if (args.has("adb-command")) collectorArgs.push("--adb-command", args.get("adb-command"));
-if (args.has("adb-serial")) collectorArgs.push("--adb-serial", args.get("adb-serial"));
+const adbCommand = args.get("adb-command")
+  ?? (typeof previousInstallManifest.adbCommand === "string" ? previousInstallManifest.adbCommand : null)
+  ?? discoverCommand(system, "adb");
+const adbSerial = args.get("adb-serial")
+  ?? (typeof previousInstallManifest.adbSerial === "string" ? previousInstallManifest.adbSerial : null);
+if (adbCommand) collectorArgs.push("--adb-command", adbCommand);
+if (adbSerial) collectorArgs.push("--adb-serial", adbSerial);
 if (args.has("no-codex-appserver")) collectorArgs.push("--no-codex-appserver");
 let codexCommand = args.get("codex-command") ?? null;
 if (!codexCommand && !args.has("no-codex-appserver") && system === "darwin") {
@@ -304,8 +324,8 @@ await writeAtomic(
   0o600,
 );
 await writeAtomic(
-  join(installRoot, "install-manifest.json"),
-  `${JSON.stringify({ product: "carthing-usage-dashboard", version: 1, hostName, port }, null, 2)}\n`,
+  installManifestFile,
+  `${JSON.stringify({ product: "carthing-usage-dashboard", version: 1, hostName, port, adbCommand, adbSerial }, null, 2)}\n`,
   0o600,
 );
 

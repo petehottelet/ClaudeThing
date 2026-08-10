@@ -81,10 +81,14 @@ export class AdbTunnelSupervisor {
     try {
       const state = await runner(this.opts.command ?? "adb", [...prefix, "get-state"]);
       if (state.code !== 0 || state.stdout.trim() !== "device") return this.fail("ADB_DEVICE_UNAVAILABLE");
+      const now = this.opts.now?.() ?? Date.now();
+      if (!this.state.connected) {
+        const clockReady = await this.syncClaudeThingClock(runner, prefix, now);
+        if (!clockReady) return this.fail("ADB_TIME_SYNC_FAILED");
+      }
       const endpoint = `tcp:${this.opts.port}`;
       const reverse = await runner(this.opts.command ?? "adb", [...prefix, "reverse", endpoint, endpoint]);
       if (reverse.code !== 0) return this.fail("ADB_REVERSE_FAILED");
-      const now = this.opts.now?.() ?? Date.now();
       this.state = {
         ...this.state,
         connected: true,
@@ -98,6 +102,29 @@ export class AdbTunnelSupervisor {
     } finally {
       this.running = false;
     }
+  }
+
+  /** Keep the kiosk's wall clock honest after a cold boot. Car Thing has no
+   * reliable battery-backed clock, so a disconnected device can resume with
+   * stale UTC even though its configured IANA time zone is correct. The
+   * identity check is intentionally mandatory before changing device time. */
+  private async syncClaudeThingClock(runner: AdbRunner, prefix: string[], nowMs: number): Promise<boolean> {
+    const command = this.opts.command ?? "adb";
+    const identity = await runner(command, [
+      ...prefix, "shell", "grep", "-qx", "ID=claudething", "/etc/os-release",
+    ]);
+    if (identity.code !== 0) return true;
+
+    const hostSeconds = Math.floor(nowMs / 1000);
+    const remote = await runner(command, [...prefix, "shell", "date", "+%s"]);
+    const deviceSeconds = Number.parseInt(remote.stdout.trim(), 10);
+    if (remote.code === 0 && Number.isSafeInteger(deviceSeconds) && Math.abs(deviceSeconds - hostSeconds) <= 2) {
+      return true;
+    }
+    const synced = await runner(command, [
+      ...prefix, "shell", "date", "-u", "-s", `@${hostSeconds}`,
+    ]);
+    return synced.code === 0;
   }
 
   private fail(code: string): false {
