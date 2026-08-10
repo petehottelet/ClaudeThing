@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "device-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "apps/device-ui"],
+      "port": 5173
+    },
+    {
+      "name": "setup-status",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["setup/status-server.mjs"],
+      "port": 8799
+    }
+  ]
+}

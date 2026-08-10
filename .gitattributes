@@ -1,0 +1,14 @@
+# Shell and Node scripts must keep LF endings — CRLF breaks them on macOS/device.
+*.command text eol=lf
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.svg text eol=lf
+*.jpg binary
+*.png binary

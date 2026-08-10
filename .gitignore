@@ -1,0 +1,25 @@
+node_modules/
+dist/
+release/
+.audit-e2e/
+shots/
+coverage/
+*.local
+.DS_Store
+.vercel/
+# Never commit pairing material or device dumps
+*.token
+pairing.token
+CarThingBackups/
+
+# Generated firmware inputs and Yocto build state
+firmware/meta-claudething/recipes-claudething/claudething-ui/files/bundle/
+firmware/build/
+firmware/downloads/
+firmware/sstate-cache/
+/sources/
+/.kas/
+/ccache/
+
+# Local-only design assets — never commit
+00_Project_Files/

@@ -1,0 +1,21 @@
+[Unit]
+Description=ClaudeThing local dashboard
+After=local-fs.target
+Before=chromium-kiosk.service
+
+[Service]
+Type=simple
+StateDirectory=claudething
+StateDirectoryMode=0700
+RuntimeDirectory=claudething-ui
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/claudething-ui-start
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

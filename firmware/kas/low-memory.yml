@@ -1,0 +1,7 @@
+header:
+  version: 18
+
+local_conf_header:
+  claudething-memory-bounds: |
+    BB_NUMBER_THREADS = "4"
+    PARALLEL_MAKE = "-j 4"

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+attempt=0
+while [ "$attempt" -lt 100 ]; do
+    if /bin/busybox wget -q -O /dev/null http://127.0.0.1:8080/; then
+        exit 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.1
+done
+
+echo "ClaudeThing dashboard did not become ready" >&2
+exit 1

@@ -1,0 +1,32 @@
+{
+  "name": "carthing-usage-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "setup": "node setup/setup.mjs",
+    "setup:status": "node setup/status-server.mjs",
+    "dev:ui": "npm run dev -w apps/device-ui",
+    "dev:collector": "npm run dev -w apps/collector",
+    "build": "npm run build --workspaces --if-present",
+    "package": "npm run build && node tools/package.mjs",
+    "firmware:stage": "node firmware/scripts/stage-ui.mjs",
+    "firmware:build": "node firmware/scripts/build.mjs",
+    "firmware:verify": "node firmware/scripts/verify.mjs",
+    "verify": "node tools/provider-catalog.mjs && npm run typecheck && npm test && npm run package && npm run verify:release && npm run firmware:verify",
+    "verify:release": "node tools/install-smoke.mjs && node tools/e2e-shot.mjs .audit-e2e && node tools/e2e-firmware-topology.mjs",
+    "install:local": "node install/install.mjs",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

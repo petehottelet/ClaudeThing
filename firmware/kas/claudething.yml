@@ -1,0 +1,22 @@
+header:
+  version: 18
+  includes:
+    - repo: yocto-superbird
+      file: kas/superbird.yml
+
+distro: claudething
+
+target:
+  - claudething-dev-image
+
+repos:
+  yocto-superbird:
+    url: https://github.com/JoeyEamigh/yocto-superbird.git
+    branch: main
+    commit: f0e7aa50a941f28ec196312f68c454982b191fee
+    path: sources/yocto-superbird
+
+  claudething:
+    path: .
+    layers:
+      firmware/meta-claudething:

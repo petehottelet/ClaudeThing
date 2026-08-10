@@ -1,0 +1,115 @@
+{
+  // The order here is the order providers appear on the device. Remove the
+  // leading // from any one-line entry to enable it. This file never stores
+  // passwords, cookies, tokens, or API keys.
+  "version": 1,
+  "providers": [
+    {
+      "id": "claude",
+      "enabled": true,
+      "show": ["quota", "currentTokens", "history"]
+    },
+    {
+      "id": "codex",
+      "enabled": true,
+      "show": [
+        "quota",
+        "resetCredits",
+        "currentTokens",
+        "lifetimeTokens",
+        "peakDailyTokens",
+        "streak",
+        "history"
+      ]
+    }
+
+    // Native collectors. See docs/PROVIDERS.md for their local sign-in method.
+    // ,{ "id": "cursor", "enabled": true, "show": ["quota", "identity", "metrics", "metricHistory", "cost"] }
+    // ,{ "id": "gemini", "enabled": true, "show": ["quota", "identity", "metrics"] }
+    // ,{ "id": "droid", "enabled": true, "show": ["quota", "identity", "metrics", "cost"] }
+    // ,{ "id": "copilot", "enabled": true, "show": ["quota", "identity", "metrics"] }
+
+    // Universal JSON bridge catalog. Each enabled id reads providers/<id>.json.
+    // ,{ "id": "openai", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // OpenAI
+    // ,{ "id": "azureopenai", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Azure OpenAI
+    // ,{ "id": "opencode", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // OpenCode
+    // ,{ "id": "opencodego", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // OpenCode Go
+    // ,{ "id": "alibaba", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Alibaba Coding Plan
+    // ,{ "id": "alibabatokenplan", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Alibaba Token Plan
+    // ,{ "id": "qwencloud", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Qwen Cloud
+    // ,{ "id": "antigravity", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "devin", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "zai", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // z.ai
+    // ,{ "id": "manus", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "minimax", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "t3chat", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // T3 Chat
+    // ,{ "id": "zoommate", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "kimi", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "kilo", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "kiro", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "vertexai", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Vertex AI
+    // ,{ "id": "augment", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "amp", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "ollama", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "synthetic", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "jetbrains", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // JetBrains AI
+    // ,{ "id": "warp", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "elevenlabs", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "openrouter", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "windsurf", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "zed", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "perplexity", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "mimo", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Xiaomi MiMo
+    // ,{ "id": "doubao", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "sakana", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Sakana AI
+    // ,{ "id": "abacus", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Abacus AI
+    // ,{ "id": "mistral", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "deepseek", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "fireworks", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "deepinfra", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "moonshot", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Moonshot / Kimi API
+    // ,{ "id": "venice", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "codebuff", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "crof", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "commandcode", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // Command Code
+    // ,{ "id": "qoder", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "stepfun", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "bedrock", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // AWS Bedrock
+    // ,{ "id": "grok", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "groq", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // GroqCloud
+    // ,{ "id": "llmproxy", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // LLM Proxy
+    // ,{ "id": "clawrouter", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "sub2api", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "wayfinder", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "litellm", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "deepgram", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "poe", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "chutes", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "neuralwatt", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "zenmux", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] }
+    // ,{ "id": "xai", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // xAI
+    // ,{ "id": "ibmbob", "enabled": true, "show": ["quota", "identity", "status", "metrics", "metricHistory", "history", "cost"] } // IBM Bob
+  ],
+
+  // Display names only. OAuth credentials never belong in this file.
+  "youtube": {
+    "channelName": "YouTube Channel",
+    "channelHandle": ""
+  },
+  "ga4": {
+    "propertyName": "Website Analytics",
+    "propertyId": ""
+  },
+
+  "markets": {
+    // Automatic rotation is paused off-screen. Turning the dial changes the
+    // instrument immediately and restarts this timer.
+    "rotationSeconds": 10,
+    "instruments": [
+      { "symbol": "NVDA", "name": "NVIDIA", "kind": "stock" },
+      { "symbol": "S&P 500", "name": "Large-cap index", "kind": "index" },
+      { "symbol": "DOW", "name": "Industrial index", "kind": "index" },
+      { "symbol": "TOTAL", "name": "Total stock market", "kind": "fund" }
+    ]
+  }
+}

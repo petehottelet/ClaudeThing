@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://github.com/petehottelet/ClaudeThing",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://github.com/petehottelet/ClaudeThing/:path*",
+      "permanent": true
+    }
+  ]
+}

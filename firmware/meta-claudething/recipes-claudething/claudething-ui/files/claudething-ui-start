@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+config=/var/lib/claudething/runtime-config.js
+webroot=/run/claudething-ui
+if [ ! -s "$config" ]; then
+    umask 077
+    printf '%s\n' 'window.__CARTHING_CONFIG__ = { endpoints: ["127.0.0.1:8790"], timeZone: "UTC", youtubeChannel: "YouTube Channel", ga4Property: "Website Analytics" };' > "$config"
+fi
+
+cp -R /usr/share/claudething/ui/. "$webroot/"
+install -m 0600 "$config" "$webroot/runtime-config.js"
+
+exec /bin/busybox httpd -f -p 127.0.0.1:8080 -h "$webroot"
