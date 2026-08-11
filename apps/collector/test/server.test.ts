@@ -201,6 +201,7 @@ describe("websocket stream", () => {
   });
 
   it("pushes a snapshot after WebSocket subprotocol authentication", async () => {
+    expect(server.lastClientActivityAt()).toBeNull();
     const message = await new Promise<unknown>((resolve, reject) => {
       const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/stream`, ["carthing.v1", `auth.${TOKEN}`]);
       const timer = setTimeout(() => reject(new Error("no message")), 2000);
@@ -212,6 +213,7 @@ describe("websocket stream", () => {
       ws.on("error", reject);
     });
     expect(isSnapshot(message)).toBe(true);
+    expect(server.lastClientActivityAt()).not.toBeNull();
   });
 
   it("broadcasts on change", async () => {

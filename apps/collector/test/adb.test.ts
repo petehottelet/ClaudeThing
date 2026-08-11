@@ -1,7 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { AdbTunnelSupervisor, type AdbRunner } from "../src/adb";
+import { AdbTunnelSupervisor, type AdbRunner, type AdbWriter } from "../src/adb";
 
 describe("AdbTunnelSupervisor", () => {
+  it("atomically mirrors snapshots without configuring a reverse socket", async () => {
+    const calls: string[][] = [];
+    const writes: { args: string[]; input: string }[] = [];
+    const runner: AdbRunner = async (_command, args) => {
+      calls.push(args);
+      if (args.includes("get-state")) return { code: 0, stdout: "device\n", stderr: "" };
+      if (args.includes("grep")) return { code: 1, stdout: "", stderr: "" };
+      return { code: 0, stdout: "", stderr: "" };
+    };
+    const writer: AdbWriter = async (_command, args, input) => {
+      writes.push({ args, input });
+      return { code: 0, stdout: "", stderr: "" };
+    };
+    const snapshot = { schemaVersion: 1, serverTime: "2026-08-08T12:00:00.000Z" };
+    const supervisor = new AdbTunnelSupervisor({
+      enabled: true,
+      port: 8790,
+      runner,
+      writer,
+      snapshot: () => snapshot,
+    });
+
+    expect(await supervisor.tick()).toBe(true);
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(writes[0]!.input)).toEqual(snapshot);
+    expect(writes[0]!.args).toEqual([]);
+    expect([...calls, ...writes.map((write) => write.args)].some((args) => args.includes("reverse"))).toBe(false);
+  });
+
   it("re-establishes adb reverse for a ready docked device", async () => {
     const calls: string[][] = [];
     const now = Date.parse("2026-08-08T12:00:00Z");
@@ -30,15 +59,22 @@ describe("AdbTunnelSupervisor", () => {
 
   it("probes a healthy tunnel without resetting its reverse mapping", async () => {
     const calls: string[][] = [];
+    let now = Date.parse("2026-08-08T12:00:00Z");
     const runner: AdbRunner = async (_command, args) => {
       calls.push(args);
       if (args.includes("get-state")) return { code: 0, stdout: "device\n", stderr: "" };
       return { code: 0, stdout: "", stderr: "" };
     };
-    const supervisor = new AdbTunnelSupervisor({ enabled: true, port: 8790, runner });
+    const supervisor = new AdbTunnelSupervisor({
+      enabled: true,
+      port: 8790,
+      runner,
+      now: () => now,
+    });
 
     expect(await supervisor.tick()).toBe(true);
     calls.length = 0;
+    now += 31_000;
     expect(await supervisor.tick()).toBe(true);
     expect(calls).toEqual([
       ["get-state"],
@@ -50,8 +86,34 @@ describe("AdbTunnelSupervisor", () => {
     expect(calls.some((args) => args.includes("reverse"))).toBe(false);
   });
 
+  it("runs no ADB command while an authenticated display stream is active", async () => {
+    const calls: string[][] = [];
+    let now = Date.parse("2026-08-08T12:00:00Z");
+    let lastClientActivity: number | null = null;
+    const runner: AdbRunner = async (_command, args) => {
+      calls.push(args);
+      if (args.includes("get-state")) return { code: 0, stdout: "device\n", stderr: "" };
+      return { code: 0, stdout: "", stderr: "" };
+    };
+    const supervisor = new AdbTunnelSupervisor({
+      enabled: true,
+      port: 8790,
+      runner,
+      now: () => now,
+      lastClientActivityAt: () => lastClientActivity,
+    });
+
+    expect(await supervisor.tick()).toBe(true);
+    calls.length = 0;
+    now += 35_000;
+    lastClientActivity = now - 1_000;
+    expect(await supervisor.tick()).toBe(true);
+    expect(calls).toEqual([]);
+  });
+
   it("repairs the reverse mapping when the non-disruptive probe fails", async () => {
     const calls: string[][] = [];
+    let now = Date.parse("2026-08-08T12:00:00Z");
     let probes = 0;
     const runner: AdbRunner = async (_command, args) => {
       calls.push(args);
@@ -62,10 +124,16 @@ describe("AdbTunnelSupervisor", () => {
       }
       return { code: 0, stdout: "", stderr: "" };
     };
-    const supervisor = new AdbTunnelSupervisor({ enabled: true, port: 8790, runner });
+    const supervisor = new AdbTunnelSupervisor({
+      enabled: true,
+      port: 8790,
+      runner,
+      now: () => now,
+    });
 
     expect(await supervisor.tick()).toBe(true);
     calls.length = 0;
+    now += 31_000;
     expect(await supervisor.tick()).toBe(true);
     expect(probes).toBe(1);
     expect(calls.at(-1)).toEqual(["reverse", "tcp:8790", "tcp:8790"]);

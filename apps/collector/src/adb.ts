@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 export interface AdbTunnelStatus {
   enabled: boolean;
@@ -15,6 +18,7 @@ export interface CommandResult {
 }
 
 export type AdbRunner = (command: string, args: string[]) => Promise<CommandResult>;
+export type AdbWriter = (command: string, args: string[], input: string) => Promise<CommandResult>;
 
 function defaultRunner(command: string, args: string[]): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
@@ -30,6 +34,41 @@ function defaultRunner(command: string, args: string[]): Promise<CommandResult> 
   });
 }
 
+async function defaultWriter(command: string, prefix: string[], input: string): Promise<CommandResult> {
+  const localTmp = path.join(os.tmpdir(), `claudething-snapshot-${process.pid}.json`);
+  const remoteTmp = "/run/claudething-ui/snapshot.json.tmp";
+  const remoteFinal = "/run/claudething-ui/snapshot.json";
+  const bytes = Buffer.byteLength(input, "utf8");
+  try {
+    await writeFile(localTmp, input, { encoding: "utf8", mode: 0o600 });
+    const identity = await defaultRunner(command, [
+      ...prefix, "shell", "grep", "-qx", "ID=claudething", "/etc/os-release",
+    ]);
+    if (identity.code !== 0) return identity;
+    const pushed = await defaultRunner(command, [...prefix, "push", localTmp, remoteTmp]);
+    if (pushed.code !== 0) return pushed;
+    const temporaryStat = await defaultRunner(command, [
+      ...prefix, "shell", "stat", "-c", "%s", remoteTmp,
+    ]);
+    if (temporaryStat.code !== 0 || Number(temporaryStat.stdout.trim()) !== bytes) {
+      return { code: 1, stdout: temporaryStat.stdout, stderr: "snapshot size mismatch" };
+    }
+    const promoted = await defaultRunner(command, [
+      ...prefix, "shell", "mv", remoteTmp, remoteFinal,
+    ]);
+    if (promoted.code !== 0) return promoted;
+    const finalStat = await defaultRunner(command, [
+      ...prefix, "shell", "stat", "-c", "%s", remoteFinal,
+    ]);
+    if (finalStat.code !== 0 || Number(finalStat.stdout.trim()) !== bytes) {
+      return { code: 1, stdout: finalStat.stdout, stderr: "snapshot promotion failed" };
+    }
+    return { code: 0, stdout: finalStat.stdout, stderr: "" };
+  } finally {
+    await rm(localTmp, { force: true }).catch(() => {});
+  }
+}
+
 export interface AdbTunnelOptions {
   enabled: boolean;
   command?: string;
@@ -37,13 +76,24 @@ export interface AdbTunnelOptions {
   port: number;
   intervalMs?: number;
   runner?: AdbRunner;
+  writer?: AdbWriter;
   now?: () => number;
+  /** When supplied, USB uses an atomic host-push mirror instead of depending
+   * on a long-lived reverse socket. The kiosk reads the local mirrored file. */
+  snapshot?: () => unknown;
+  /** Authenticated dashboard stream activity, used to avoid disruptive ADB
+   * traffic while the reverse tunnel is demonstrably carrying data. */
+  lastClientActivityAt?: () => number | null;
 }
+
+const ACTIVE_STREAM_GRACE_MS = 40_000;
+const NEW_TUNNEL_GRACE_MS = 30_000;
 
 export class AdbTunnelSupervisor {
   private readonly opts: AdbTunnelOptions;
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  private lastConfiguredAtMs: number | null = null;
   private state: AdbTunnelStatus;
 
   constructor(opts: AdbTunnelOptions) {
@@ -79,9 +129,42 @@ export class AdbTunnelSupervisor {
     const runner = this.opts.runner ?? defaultRunner;
     const prefix = this.opts.serial ? ["-s", this.opts.serial] : [];
     try {
+      const now = this.opts.now?.() ?? Date.now();
+      if (this.opts.snapshot) {
+        if (!this.state.connected) {
+          const state = await runner(this.opts.command ?? "adb", [...prefix, "get-state"]);
+          if (state.code !== 0 || state.stdout.trim() !== "device") {
+            return this.fail("ADB_DEVICE_UNAVAILABLE");
+          }
+          const clockReady = await this.syncClaudeThingClock(runner, prefix, now);
+          if (!clockReady) return this.fail("ADB_TIME_SYNC_FAILED");
+        }
+        let payload: string;
+        try {
+          payload = JSON.stringify(this.opts.snapshot());
+        } catch {
+          return this.fail("ADB_SNAPSHOT_INVALID");
+        }
+        if (Buffer.byteLength(payload, "utf8") > 1024 * 1024) {
+          return this.fail("ADB_SNAPSHOT_TOO_LARGE");
+        }
+        const writer = this.opts.writer ?? defaultWriter;
+        const pushed = await writer(this.opts.command ?? "adb", prefix, payload);
+        if (pushed.code !== 0) return this.fail("ADB_SNAPSHOT_PUSH_FAILED");
+        this.succeed(now);
+        return true;
+      }
+      const lastClientActivity = this.opts.lastClientActivityAt?.() ?? null;
+      const activeStream =
+        lastClientActivity !== null && now - lastClientActivity <= ACTIVE_STREAM_GRACE_MS;
+      const newlyConfigured =
+        this.lastConfiguredAtMs !== null && now - this.lastConfiguredAtMs <= NEW_TUNNEL_GRACE_MS;
+      if (this.state.connected && (activeStream || newlyConfigured)) {
+        this.succeed(now);
+        return true;
+      }
       const state = await runner(this.opts.command ?? "adb", [...prefix, "get-state"]);
       if (state.code !== 0 || state.stdout.trim() !== "device") return this.fail("ADB_DEVICE_UNAVAILABLE");
-      const now = this.opts.now?.() ?? Date.now();
       if (this.state.connected) {
         const probe = await runner(this.opts.command ?? "adb", [
           ...prefix,
@@ -106,6 +189,7 @@ export class AdbTunnelSupervisor {
       const endpoint = `tcp:${this.opts.port}`;
       const reverse = await runner(this.opts.command ?? "adb", [...prefix, "reverse", endpoint, endpoint]);
       if (reverse.code !== 0) return this.fail("ADB_REVERSE_FAILED");
+      this.lastConfiguredAtMs = now;
       this.succeed(now);
       return true;
     } catch {

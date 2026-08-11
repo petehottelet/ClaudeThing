@@ -36,6 +36,8 @@ export interface CollectorServer {
   listen(port: number, hostname?: string): Promise<number>;
   broadcastSnapshot(): void;
   clientCount(): number;
+  /** Most recent authenticated stream connect/pong, for USB recovery gating. */
+  lastClientActivityAt(): number | null;
   close(): Promise<void>;
 }
 
@@ -54,6 +56,7 @@ export function createCollectorServer(deps: CollectorServerDeps): CollectorServe
     },
   });
   const alive = new Map<WebSocket, boolean>();
+  let lastClientActivityMs: number | null = null;
   let heartbeat: NodeJS.Timeout | null = null;
 
   function tokenMatches(provided: string | null): boolean {
@@ -286,7 +289,11 @@ export function createCollectorServer(deps: CollectorServerDeps): CollectorServe
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
       alive.set(ws, true);
-      ws.on("pong", () => alive.set(ws, true));
+      lastClientActivityMs = Date.now();
+      ws.on("pong", () => {
+        alive.set(ws, true);
+        lastClientActivityMs = Date.now();
+      });
       ws.on("close", () => alive.delete(ws));
       ws.on("error", () => {
         // Client-side errors terminate that client only.
@@ -346,6 +353,10 @@ export function createCollectorServer(deps: CollectorServerDeps): CollectorServe
 
     clientCount(): number {
       return wss.clients.size;
+    },
+
+    lastClientActivityAt(): number | null {
+      return lastClientActivityMs;
     },
 
     close(): Promise<void> {

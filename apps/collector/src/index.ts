@@ -143,6 +143,12 @@ async function main(): Promise<void> {
       }),
       peer: peerSync ? peerSync.status() : null,
       adb: adbTunnel ? adbTunnel.status() : { enabled: false },
+      stream: {
+        clients: server.clientCount(),
+        lastClientActivityAt: server.lastClientActivityAt() === null
+          ? null
+          : new Date(server.lastClientActivityAt()!).toISOString(),
+      },
       configurationWarnings: [
         ...(config.tokenSource === "flag" ? ["TOKEN_ON_COMMAND_LINE"] : []),
         ...(config.peerUrl && !rememberedPeerHost ? ["PEER_HOST_NOT_PINNED"] : []),
@@ -263,8 +269,10 @@ async function main(): Promise<void> {
       command: config.adbCommand,
       serial: config.adbSerial,
       port: config.port,
+      intervalMs: 15_000,
+      snapshot: getSnapshot,
+      lastClientActivityAt: () => server.lastClientActivityAt(),
     });
-    adbTunnel.start();
 
     if (config.peerUrl) {
       peerSync = new PeerSync({
@@ -282,6 +290,9 @@ async function main(): Promise<void> {
   }
 
   const port = await server.listen(config.port, config.bindHost);
+  // The host endpoint must be listening before the first reverse mapping is
+  // configured; otherwise the kiosk can race into a connection-refused loop.
+  adbTunnel?.start();
   console.log(
     `[collector] v${COLLECTOR_VERSION} listening on port ${port} as host "${config.hostName}"` +
       (config.mock !== null ? ` (mock fixture: ${config.mock}, refresh ${MOCK_REFRESH_MS / 1000}s)` : ""),

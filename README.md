@@ -34,7 +34,7 @@
 
 Instead of opening another tab to wonder where your limits or key metrics stand, glance at the display on your desk. The dark 800×480 interface is designed around the hardware you already have: turn the dial to explore, press to open, use the preset buttons to jump, and let rotating market views keep the screen useful on their own.
 
-A collector on the attached computer reads local telemetry and sends only bounded numeric summaries over an authenticated USB tunnel. Credentials stay on the host and are never built into firmware.
+A collector on the attached computer reads local telemetry and atomically mirrors only bounded numeric summaries into the display's loopback web root over ADB. Authenticated HTTP/WebSocket transport remains available for stable direct or trusted-LAN connections. Credentials stay on the host and are never built into firmware or copied into the mirrored snapshot.
 
 ### Why you might love it
 
@@ -86,11 +86,11 @@ The rotary dial changes Daily, Weekly, Monthly, and Year ranges inside YouTube a
 
 - Claude quota windows from the local CLI login and status-line payloads, plus persisted last-valid state and local token summaries.
 - Codex subscription windows, reset-credit availability, reset timing, and account usage facts from its local app server, plus detailed token classes from local rollout records.
-- Self-updating account data: Codex account usage refreshes every minute (and on rate-limit notifications), Claude quota usage refreshes on a five-minute base cadence, and local Claude/Codex activity records are read every 15 seconds. The collector renews the Claude CLI's OAuth access token shortly before expiry without sending a model prompt; an interactive login is needed only if the underlying refresh grant is revoked or expires. Changes stream to the display over WebSocket without a page reload.
+- Self-updating account data: Codex account usage refreshes every minute (and on rate-limit notifications), Claude quota usage refreshes on a five-minute base cadence, and local Claude/Codex activity records are read every 15 seconds. The collector renews the Claude CLI's OAuth access token shortly before expiry without sending a model prompt; an interactive login is needed only if the underlying refresh grant is revoked or expires. USB displays read an atomically updated local mirror, while stable network clients receive WebSocket updates; neither path requires a page reload.
 - Native Cursor, Gemini, Droid, and Copilot collectors, enabled only when selected, with plan identity, every available quota bucket, extra usage/overage, balances, costs, and provider-specific history where the signed-in account exposes them.
 - A [65-provider catalog](docs/PROVIDER_CATALOG.md), with a unique explanation for every source, plus a validated JSON bridge for provider APIs, CLIs, scripts, and agent-written integrations. Unknown providers can use the same bridge contract without a firmware rebuild.
 - Honest live, stale, unavailable, error, and offline states; missing data never becomes a fabricated zero.
-- Authenticated HTTP/WebSocket transport, USB reverse-tunnel recovery, multi-host merge rules, and an aged device cache.
+- Atomic USB snapshot mirroring with retry, authenticated HTTP/WebSocket transport for direct connections, multi-host merge rules, and an honestly aged device cache.
 - Touch, horizontal swipes, rotary dial, dial press, Back, presets, and a System screen.
 - An original Yocto product layer with ClaudeThing identity, boot artwork, loopback HTTP service, browser readiness gate, and development/production image recipes.
 - Host time-zone provisioning plus identity-guarded clock repair on USB reconnect, so the device clock and calendar buckets follow the attached computer, including daylight-saving changes.
@@ -101,7 +101,8 @@ The rotary dial changes Daily, Weekly, Monthly, and Year ranges inside YouTube a
 
 ```mermaid
 flowchart LR
-  D["Car Thing dashboard"] -->|"authenticated HTTP + WebSocket"| C["host collector"]
+  C["host collector"] -->|"bounded snapshot over USB ADB"| D["Car Thing loopback mirror"]
+  D -.->|"optional authenticated HTTP + WebSocket"| C
   C --> A["Claude local telemetry"]
   C --> X["Codex local telemetry"]
   C <-->|"optional pinned peer"| P["second host collector"]
@@ -212,7 +213,7 @@ The installer creates the editable display file at `~/Library/Application Suppor
 
 ## Where things live
 
-- `apps/collector` — local adapters, merge engine, authenticated service, peer sync, and USB tunnel supervisor.
+- `apps/collector` — local adapters, merge engine, authenticated service, peer sync, and atomic USB snapshot supervisor.
 - `apps/device-ui` — Chrome-compatible React/Vite dashboard.
 - `packages/contracts` — wire schema, validation, presentation helpers, and fixtures.
 - `install` — guarded macOS/Windows host install and uninstall.

@@ -20,7 +20,7 @@
  *   --codex-command <cmd> codex app-server launch command (default "codex app-server")
  *   --adb-command <path>  ADB executable (default "adb")
  *   --adb-serial <id>     target a specific ADB device
- *   --no-adb              disable automatic ADB reverse-tunnel recovery
+ *   --no-adb              disable automatic ADB snapshot mirroring/recovery
  *   --no-codex-appserver  use rollout logs only; quota windows unavailable
  *   --no-claude-oauth     disable the continuous Claude quota poller
  */

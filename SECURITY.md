@@ -9,6 +9,7 @@ The collector is a local companion service, not an internet service. Bind access
 - Production tokens must be 32-256 base64url characters. The installer generates 32 random bytes.
 - HTTP endpoints require `Authorization: Bearer`. Query-string tokens are rejected.
 - The sole unauthenticated route is a loopback-only, bodyless transport probe used to verify an existing ADB reverse mapping without disrupting the dashboard stream. It exposes no telemetry or configuration.
+- The USB supervisor writes a bounded, credential-free snapshot to a fixed file in the device's volatile loopback web root using an identity-checked, atomic temporary-file rename. A failed ADB attempt leaves the last complete snapshot intact and is retried later.
 - WebSocket authentication uses a dedicated subprotocol header; the server echoes only `carthing.v1`, not the secret.
 - Pairing material is accepted through a one-time URL fragment, persisted in device local storage, and immediately scrubbed from browser history/address state.
 - CORS is an exact allowlist. Security headers include `no-store`, `no-referrer`, `nosniff`, and a restrictive UI Content Security Policy.

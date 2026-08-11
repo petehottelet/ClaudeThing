@@ -26,7 +26,7 @@ node release/install/install.mjs --host-name desk-mac
 
 The installer creates a random pairing token, installs a per-user background collector, preserves compatible existing Claude status-line behavior, creates a commented display-configuration file, and keeps both files across upgrades. Use `--no-start`, `--no-claude-statusline`, `--no-adb`, or `--no-codex-appserver` only when that behavior is intentional.
 
-When ADB is available, the installer records its absolute executable path so macOS and Windows startup services do not depend on an interactive shell's `PATH`; explicit `--adb-command` and `--adb-serial` selections survive upgrades. The collector automatically restores the USB reverse tunnel. After confirming the attached device reports `ID=claudething`, it also repairs a stale device clock from the host before reconnecting the dashboard.
+When ADB is available, the installer records its absolute executable path so macOS and Windows startup services do not depend on an interactive shell's `PATH`; explicit `--adb-command` and `--adb-serial` selections survive upgrades. The collector atomically mirrors the latest bounded snapshot into the device's loopback-only web root and retries after transient USB failures. After confirming the attached device reports `ID=claudething`, it also repairs a stale device clock from the host before updating the dashboard.
 
 Default token locations:
 
@@ -125,7 +125,7 @@ Acceptance checklist:
 - Claude quotas appear from the signed-in Claude CLI credential without requiring a model prompt. Terminal-CLI status-line events remain a second source for local activity totals, and the last valid quota survives collector restart.
 - Dial rotation, dial press, Back, presets, touch, and swipes work without missed or doubled actions.
 - Cable removal produces an honestly aged offline view; reconnect restores live data without a page reload.
-- Reboot returns to the dashboard and the host restores the USB tunnel.
+- Reboot returns to the dashboard and the host resumes the USB snapshot mirror.
 
 ## 8. Failure interpretation
 
