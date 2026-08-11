@@ -48,7 +48,7 @@ A collector on the attached computer reads local telemetry and sends only bounde
 
 ClaudeThing is a non-profit, community open-source project. It is not affiliated with, endorsed by, sponsored by, or supported by Anthropic, OpenAI, Google, Spotify, or any other AI lab, model provider, platform vendor, or hardware manufacturer.
 
-The persistent development firmware has booted on real hardware and displayed live Claude and Codex data. Display, USB ADB, the host tunnel, dashboard HTTP service, Chromium kiosk, and physical dial input have been exercised. Claude quota updates use the signed-in local CLI credential with retained last-good state, rate-limit-aware polling, and status-line observations as a second source. Production firmware, unattended recovery, and the full physical-control/soak matrix remain release gates.
+The persistent development firmware has booted on real hardware and displayed live Claude and Codex data. Display, USB ADB, the host tunnel, dashboard HTTP service, Chromium kiosk, and physical dial input have been exercised. Claude quota updates use the signed-in local CLI credential with automatic OAuth refresh, retained last-good state, rate-limit-aware polling, and status-line observations as a second source. Production firmware, unattended recovery, and the full physical-control/soak matrix remain release gates.
 
 ## Install with a coding agent
 
@@ -86,7 +86,7 @@ The rotary dial changes Daily, Weekly, Monthly, and Year ranges inside YouTube a
 
 - Claude quota windows from the local CLI login and status-line payloads, plus persisted last-valid state and local token summaries.
 - Codex subscription windows, reset-credit availability, reset timing, and account usage facts from its local app server, plus detailed token classes from local rollout records.
-- Self-updating account data: Codex account usage refreshes every minute (and on rate-limit notifications), Claude quota usage refreshes on a five-minute base cadence, and local Claude/Codex activity records are read every 15 seconds. Changes stream to the display over WebSocket without a page reload.
+- Self-updating account data: Codex account usage refreshes every minute (and on rate-limit notifications), Claude quota usage refreshes on a five-minute base cadence, and local Claude/Codex activity records are read every 15 seconds. The collector renews the Claude CLI's OAuth access token shortly before expiry without sending a model prompt; an interactive login is needed only if the underlying refresh grant is revoked or expires. Changes stream to the display over WebSocket without a page reload.
 - Native Cursor, Gemini, Droid, and Copilot collectors, enabled only when selected, with plan identity, every available quota bucket, extra usage/overage, balances, costs, and provider-specific history where the signed-in account exposes them.
 - A [65-provider catalog](docs/PROVIDER_CATALOG.md), with a unique explanation for every source, plus a validated JSON bridge for provider APIs, CLIs, scripts, and agent-written integrations. Unknown providers can use the same bridge contract without a firmware rebuild.
 - Honest live, stale, unavailable, error, and offline states; missing data never becomes a fabricated zero.

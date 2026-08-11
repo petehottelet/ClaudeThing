@@ -122,7 +122,7 @@ Acceptance checklist:
 - ClaudeThing boot artwork transitions to the dashboard.
 - Bottom rail reads `LIVE`; Codex data appears when its host source is active.
 - The clock matches the provisioned zone and the System screen names that zone.
-- Claude quotas appear after a Claude Code terminal-CLI status-line event (the desktop app does not emit them); until then the Claude card shows its token totals with "No quota reported". The last valid quota survives collector restart.
+- Claude quotas appear from the signed-in Claude CLI credential without requiring a model prompt. Terminal-CLI status-line events remain a second source for local activity totals, and the last valid quota survives collector restart.
 - Dial rotation, dial press, Back, presets, touch, and swipes work without missed or doubled actions.
 - Cable removal produces an honestly aged offline view; reconnect restores live data without a page reload.
 - Reboot returns to the dashboard and the host restores the USB tunnel.
@@ -135,7 +135,7 @@ Acceptance checklist:
 | ClaudeThing logo remains indefinitely | Early boot works, but userspace is not ready. Run `doctor`, then inspect failed systemd units. |
 | `doctor` says `httpd applet: failed` | The built root filesystem lacks the required BusyBox feature; rebuild, inspect the actual image, and obtain new artifact approval. |
 | Services are active but the screen is unchanged | Inspect loopback HTTP and kiosk logs; do not call the deployment successful until pixels change. |
-| Dashboard is live but Claude quota is stale or shows "Claude login expired" | Claude quota updates via the CLI's stored login on a five-minute base cadence; provider rate limits trigger bounded Retry-After/exponential backoff, and transient failures retain the last-good observation. If the login token expires, run any `claude` command once to refresh it; the poller recovers automatically. Status-line events remain a second live source during CLI sessions. |
+| Dashboard is live but Claude quota is stale or shows "Claude login expired" | Claude quota updates via the CLI's stored login on a five-minute base cadence. The collector refreshes an expiring access token without issuing a model request; provider rate limits trigger bounded Retry-After/exponential backoff, and transient failures retain the last-good observation. Run `claude auth login` only when the refresh grant itself has expired or been revoked. Status-line events remain a second live source during CLI sessions. |
 | Clock is UTC | Re-run `provision-firmware`; do not hard-code a numeric offset because daylight saving changes it. |
 
 ## 9. Host uninstall

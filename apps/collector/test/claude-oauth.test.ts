@@ -7,7 +7,11 @@
 
 import { describe, expect, it } from "vitest";
 import type { ProviderSnapshot } from "@carthing/contracts";
-import { ClaudeOauthAdapter, parseOauthUsage } from "../src/adapters/claude-oauth";
+import {
+  ClaudeOauthAdapter,
+  parseOauthUsage,
+  type OauthCredential,
+} from "../src/adapters/claude-oauth";
 
 const USAGE_BODY = {
   five_hour: { utilization: 4, resets_at: "2026-08-10T18:10:00.443546+00:00" },
@@ -66,6 +70,18 @@ function collect(): { obs: ProviderSnapshot[]; push: (o: ProviderSnapshot) => vo
   return { obs, push: (o) => obs.push(o) };
 }
 
+function credential(overrides: Partial<OauthCredential> = {}): OauthCredential {
+  return {
+    accessToken: "tok",
+    expiresAt: null,
+    refreshToken: "refresh",
+    refreshTokenExpiresAt: null,
+    scopes: ["user:inference"],
+    present: true,
+    ...overrides,
+  };
+}
+
 describe("ClaudeOauthAdapter", () => {
   it("emits a live observation with windows on a successful poll", async () => {
     const { obs, push } = collect();
@@ -73,7 +89,7 @@ describe("ClaudeOauthAdapter", () => {
       host: "mac",
       onObservation: push,
       now: () => Date.parse("2026-08-10T12:00:00Z"),
-      readCredential: async () => ({ accessToken: "tok", expiresAt: Date.parse("2026-08-10T13:00:00Z"), present: true }),
+      readCredential: async () => credential({ expiresAt: Date.parse("2026-08-10T13:00:00Z") }),
       fetchImpl: (async () => new Response(JSON.stringify(USAGE_BODY), { status: 200 })) as typeof fetch,
     });
     await adapter.tick();
@@ -83,23 +99,67 @@ describe("ClaudeOauthAdapter", () => {
     expect(obs[0]?.quotaWindows).toHaveLength(3);
   });
 
-  it("reports expiry without touching the quota headline age", async () => {
+  it("refreshes an expired credential before polling usage", async () => {
     const { obs, push } = collect();
+    let refreshes = 0;
+    let usageToken = "";
     const adapter = new ClaudeOauthAdapter({
       host: "mac",
       onObservation: push,
       now: () => Date.parse("2026-08-10T12:00:00Z"),
-      readCredential: async () => ({ accessToken: "tok", expiresAt: Date.parse("2026-08-10T11:00:00Z"), present: true }),
-      fetchImpl: (async () => {
-        throw new Error("must not fetch with an expired token");
+      readCredential: async () => credential({ expiresAt: Date.parse("2026-08-10T11:00:00Z") }),
+      refreshCredential: async () => {
+        refreshes += 1;
+        return {
+          kind: "refreshed",
+          credential: credential({
+            accessToken: "rotated",
+            expiresAt: Date.parse("2026-08-10T13:00:00Z"),
+          }),
+        };
+      },
+      fetchImpl: (async (_url, init) => {
+        usageToken = new Headers(init?.headers).get("authorization") ?? "";
+        return new Response(JSON.stringify(USAGE_BODY), { status: 200 });
       }) as typeof fetch,
     });
     await adapter.tick();
-    expect(obs[0]).toMatchObject({
-      state: "unavailable",
-      observedAt: null,
-      diagnostic: "CLAUDE_AUTH_EXPIRED",
+    expect(refreshes).toBe(1);
+    expect(usageToken).toBe("Bearer rotated");
+    expect(obs[0]).toMatchObject({ state: "live", diagnostic: null });
+  });
+
+  it("reports expiry when the refresh credential is rejected", async () => {
+    const { obs, push } = collect();
+    let usageFetches = 0;
+    const adapter = new ClaudeOauthAdapter({
+      host: "mac",
+      onObservation: push,
+      now: () => Date.parse("2026-08-10T12:00:00Z"),
+      readCredential: async () => credential({ expiresAt: Date.parse("2026-08-10T11:00:00Z") }),
+      refreshCredential: async () => ({ kind: "expired" }),
+      fetchImpl: (async () => {
+        usageFetches += 1;
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch,
     });
+    await adapter.tick();
+    expect(usageFetches).toBe(0);
+    expect(obs[0]).toMatchObject({ state: "unavailable", diagnostic: "CLAUDE_AUTH_EXPIRED" });
+  });
+
+  it("keeps restored quota during a transient refresh failure", async () => {
+    const { obs, push } = collect();
+    const adapter = new ClaudeOauthAdapter({
+      host: "mac",
+      hasInitialObservation: true,
+      onObservation: push,
+      now: () => Date.parse("2026-08-10T12:00:00Z"),
+      readCredential: async () => credential({ expiresAt: Date.parse("2026-08-10T11:00:00Z") }),
+      refreshCredential: async () => ({ kind: "transient", retryAfter: "600" }),
+    });
+    await adapter.tick();
+    expect(obs).toHaveLength(0);
   });
 
   it("treats 401 as expired credentials", async () => {
@@ -107,11 +167,38 @@ describe("ClaudeOauthAdapter", () => {
     const adapter = new ClaudeOauthAdapter({
       host: "mac",
       onObservation: push,
-      readCredential: async () => ({ accessToken: "tok", expiresAt: null, present: true }),
+      readCredential: async () => credential(),
+      refreshCredential: async () => ({ kind: "expired" }),
       fetchImpl: (async () => new Response("{}", { status: 401 })) as typeof fetch,
     });
     await adapter.tick();
     expect(obs[0]?.diagnostic).toBe("CLAUDE_AUTH_EXPIRED");
+  });
+
+  it("forces one refresh and retries when usage rejects a nominally fresh token", async () => {
+    const { obs, push } = collect();
+    let usageFetches = 0;
+    let forceRefresh = false;
+    const adapter = new ClaudeOauthAdapter({
+      host: "mac",
+      onObservation: push,
+      readCredential: async () => credential(),
+      refreshCredential: async (_cred, _fetch, _now, force) => {
+        forceRefresh = force === true;
+        return { kind: "refreshed", credential: credential({ accessToken: "rotated" }) };
+      },
+      fetchImpl: (async (_url, init) => {
+        usageFetches += 1;
+        const auth = new Headers(init?.headers).get("authorization");
+        return auth === "Bearer rotated"
+          ? new Response(JSON.stringify(USAGE_BODY), { status: 200 })
+          : new Response("{}", { status: 401 });
+      }) as typeof fetch,
+    });
+    await adapter.tick();
+    expect(forceRefresh).toBe(true);
+    expect(usageFetches).toBe(2);
+    expect(obs[0]).toMatchObject({ state: "live", diagnostic: null });
   });
 
   it("stays silent when the host has no CLI credential store", async () => {
@@ -119,7 +206,11 @@ describe("ClaudeOauthAdapter", () => {
     const adapter = new ClaudeOauthAdapter({
       host: "mac",
       onObservation: push,
-      readCredential: async () => ({ accessToken: null, expiresAt: null, present: false }),
+      readCredential: async () => credential({
+        accessToken: null,
+        refreshToken: null,
+        present: false,
+      }),
       fetchImpl: (async () => new Response("{}", { status: 200 })) as typeof fetch,
     });
     await adapter.tick();
@@ -135,7 +226,7 @@ describe("ClaudeOauthAdapter", () => {
       hasInitialObservation: true,
       onObservation: push,
       now: () => now,
-      readCredential: async () => ({ accessToken: "tok", expiresAt: null, present: true }),
+      readCredential: async () => credential(),
       fetchImpl: (async () => {
         fetches += 1;
         return new Response("{}", { status: 429, headers: { "retry-after": "600" } });
@@ -158,7 +249,7 @@ describe("ClaudeOauthAdapter", () => {
     const adapter = new ClaudeOauthAdapter({
       host: "mac",
       onObservation: push,
-      readCredential: async () => ({ accessToken: "tok", expiresAt: null, present: true }),
+      readCredential: async () => credential(),
       fetchImpl: (async () => new Response("{}", { status: 503 })) as typeof fetch,
     });
     await adapter.tick();

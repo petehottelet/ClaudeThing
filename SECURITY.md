@@ -15,6 +15,7 @@ The collector is a local companion service, not an internet service. Bind access
 - Status-line forwarding sends only an allowlist of model/rate-limit/context/cost fields. Paths, prompts, transcript identifiers, and workspace data are discarded before network transmission.
 - Local JSONL readers emit aggregate numbers only. Raw prompts and records are never served.
 - The Codex process is launched directly from a quoted argument vector, without a command shell.
+- Claude OAuth renewal uses Anthropic's token endpoint and the public client identity used by the installed CLI. Rotated credentials are written back to the CLI's existing macOS Keychain item through child-process stdin, never command arguments or logs; the non-macOS credential-file fallback is replaced atomically with owner-only permissions. No model prompt is sent to keep the dashboard current.
 - Pairing tokens are file-backed, retained across upgrades, and protected with per-user permissions where the platform supports it.
 - Device deployment requires a nonempty hashed stock-webapp backup marker and uses a fixed reboot-volatile staging/mount path.
 
