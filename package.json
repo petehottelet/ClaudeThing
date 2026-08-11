@@ -18,6 +18,7 @@
     "build": "npm run build --workspaces --if-present",
     "package": "npm run build && node tools/package.mjs",
     "firmware:stage": "node firmware/scripts/stage-ui.mjs",
+    "firmware:assets": "node firmware/scripts/generate-splash.mjs",
     "firmware:build": "node firmware/scripts/build.mjs",
     "firmware:verify": "node firmware/scripts/verify.mjs",
     "verify": "node tools/provider-catalog.mjs && npm run typecheck && npm test && npm run package && npm run verify:release && npm run firmware:verify",

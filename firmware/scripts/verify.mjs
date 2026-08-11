@@ -15,6 +15,7 @@ const required = [
   "firmware/meta-claudething/recipes-core/busybox/busybox/claudething-httpd.cfg",
   "assets/claw-icon.svg",
   "firmware/assets/claudething-splash.svg",
+  "firmware/scripts/generate-splash.mjs",
   "firmware/meta-claudething/recipes-bsp/superbird-logo/superbird-logo.bbappend",
   "firmware/meta-claudething/recipes-bsp/superbird-logo/files/claudething-bootup.bmp",
   "firmware/meta-claudething/recipes-graphics/weston-init/superbird-weston-init_%.bbappend",
@@ -37,6 +38,32 @@ if (!license.startsWith("MIT License\n") || !license.includes("ClaudeThing contr
 const claw = await readFile(resolve(repository, "assets/claw-icon.svg"), "utf8");
 if (!claw.includes('viewBox="0 0 745 1122"') || !claw.includes('fill="#d97757"')) {
   throw new Error("ClaudeThing claw source must retain its viewBox and product orange.");
+}
+
+const wordmark = await readFile(resolve(repository, "docs/media/wordmark.svg"), "utf8");
+if (!wordmark.includes('<g id="lockup">')) {
+  throw new Error("The reusable wordmark lockup must remain addressable without its card background.");
+}
+
+const splashSource = await readFile(
+  resolve(repository, "firmware/assets/claudething-splash.svg"),
+  "utf8",
+);
+for (const value of [
+  '<rect width="800" height="480" fill="#000000"/>',
+  '<g transform="translate(40 154.286) scale(0.857142857)">',
+  '<g id="lockup">',
+]) {
+  if (!splashSource.includes(value)) {
+    throw new Error(`Firmware splash must retain its borderless solid-black composition: ${value}`);
+  }
+}
+if (
+  splashSource.includes("#0a0a0e") ||
+  splashSource.includes("<image") ||
+  splashSource.includes("<use")
+) {
+  throw new Error("Firmware splash must be self-contained without the wordmark card or its panel.");
 }
 
 const kas = await readFile(resolve(repository, "firmware/kas/claudething.yml"), "utf8");
