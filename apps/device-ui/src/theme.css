@@ -296,6 +296,41 @@ body {
   min-height: 0;
 }
 
+/* Three Claude account limits still fit cleanly in one half-width overview
+   card. Keep every label, bar, percentage, and reset time—only tighten the
+   vertical rhythm. */
+.card-meters.three-limit-layout .meter.compact {
+  padding: 7px 12px 6px;
+}
+
+.card-meters.three-limit-layout .meter.compact + .meter.compact {
+  margin-top: 5px;
+}
+
+.card-meters.three-limit-layout .meter.compact .meter-pct {
+  font-size: 28px;
+}
+
+.card-meters.three-limit-layout .meter.compact .meter-pct .pct-sign {
+  font-size: 18px;
+}
+
+.card-meters.three-limit-layout .meter.compact .chip {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.card-meters.three-limit-layout .meter.compact .bar {
+  height: 7px;
+  margin-top: 5px;
+}
+
+.card-meters.three-limit-layout .meter.compact .meter-reset {
+  font-size: 12px;
+  line-height: 1.05;
+  margin-top: 3px;
+}
+
 .usage-facts {
   background: linear-gradient(135deg, #211c2a, #17131e);
   border: 1px solid #342d40;

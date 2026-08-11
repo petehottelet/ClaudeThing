@@ -136,6 +136,18 @@ export function displayQuotaWindows(providerId: string, windows: QuotaWindow[]):
   return windows;
 }
 
+/** Quotas that fit in the 50/50 overview. Claude's three distinct account
+ * windows are all useful at a glance; other providers keep the stable
+ * current/weekly comparison and Codex keeps its single account-wide period. */
+export function overviewQuotaWindows(providerId: string, windows: QuotaWindow[]): QuotaWindow[] {
+  if (providerId === "claude") {
+    const displayed = displayQuotaWindows(providerId, windows).slice(0, 3);
+    return displayed.length > 0 ? displayed : placeholderWindows();
+  }
+  if (providerId === "codex") return [currentPeriodWindow(windows)];
+  return windows.length > 0 ? cardWindows(windows) : placeholderWindows();
+}
+
 /**
  * One quota meter card, the product's core instrument:
  * big percentage · label chip · progress bar · reset countdown.
