@@ -270,7 +270,7 @@ body {
   padding: 12px 16px 11px;
 }
 .meter.compact .meter-pct {
-  font-size: 38px;
+  font-size: 37px;
 }
 .meter.compact .meter-pct .pct-sign {
   font-size: 24px;
@@ -308,11 +308,11 @@ body {
 }
 
 .card-meters.three-limit-layout .meter.compact .meter-pct {
-  font-size: 36.1px;
+  font-size: 37px;
 }
 
 .card-meters.three-limit-layout .meter.compact .meter-pct .pct-sign {
-  font-size: 23.2px;
+  font-size: 24px;
 }
 
 .card-meters.three-limit-layout .meter.compact .chip {
