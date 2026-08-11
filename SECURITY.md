@@ -10,6 +10,7 @@ The collector is a local companion service, not an internet service. Bind access
 - HTTP endpoints require `Authorization: Bearer`. Query-string tokens are rejected.
 - The sole unauthenticated route is a loopback-only, bodyless transport probe used to verify an existing ADB reverse mapping without disrupting the dashboard stream. It exposes no telemetry or configuration.
 - The USB supervisor writes a bounded, credential-free snapshot to a fixed file in the device's volatile loopback web root using an identity-checked, atomic temporary-file rename. A failed ADB attempt leaves the last complete snapshot intact and is retried later.
+- The macOS Bluetooth fallback uses an encrypted, bonded RFCOMM link plus an application HMAC-SHA256 over a versioned length/sequence envelope. The device accepts at most one MiB, rejects unauthenticated and replayed frames, performs a minimal JSON-envelope check, and uses the same atomic final-file promotion as USB. Bluetooth pairing is discoverable for two minutes only when explicitly started over an already trusted USB session.
 - WebSocket authentication uses a dedicated subprotocol header; the server echoes only `carthing.v1`, not the secret.
 - Pairing material is accepted through a one-time URL fragment, persisted in device local storage, and immediately scrubbed from browser history/address state.
 - CORS is an exact allowlist. Security headers include `no-store`, `no-referrer`, `nosniff`, and a restrictive UI Content Security Policy.
@@ -23,7 +24,7 @@ The collector is a local companion service, not an internet service. Bind access
 
 ## Deliberate tradeoffs
 
-- Local HTTP is used for USB and private-LAN compatibility with the legacy Car Thing webview. The bearer token prevents unauthenticated reads but does not encrypt trusted-LAN traffic. Use USB, an isolated VLAN, or a local HTTPS reverse proxy where traffic confidentiality matters.
+- Local HTTP is used for USB and private-LAN compatibility with the device browser. The bearer token prevents unauthenticated reads but does not encrypt trusted-LAN traffic. The Bluetooth snapshot fallback does not expose that HTTP service over Bluetooth. Use USB, paired Bluetooth, an isolated VLAN, or a local HTTPS reverse proxy where traffic confidentiality matters.
 - The token provisioned into the device UI is readable to someone with filesystem access to the already-compromised/customized device. Provider account credentials and API keys are never stored on the device.
 - Claude and Codex telemetry is operational rather than billing-grade. It may be absent or stale; the UI labels those conditions instead of substituting values.
 - Existing command-based Claude status lines are chained through the same shell semantics Claude Code already used. Their output is bounded; their command remains user-controlled local configuration.

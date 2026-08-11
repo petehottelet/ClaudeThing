@@ -24,7 +24,7 @@ The packaged host payload is written to `release/`.
 node release/install/install.mjs --host-name desk-mac
 ```
 
-The installer creates a random pairing token, installs a per-user background collector, preserves compatible existing Claude status-line behavior, creates a commented display-configuration file, and keeps both files across upgrades. Use `--no-start`, `--no-claude-statusline`, `--no-adb`, or `--no-codex-appserver` only when that behavior is intentional.
+The installer creates a random pairing token, installs a per-user background collector, preserves compatible existing Claude status-line behavior, creates a commented display-configuration file, and keeps both files across upgrades. A package built on macOS also installs a universal native Bluetooth sender. Use `--no-start`, `--no-claude-statusline`, `--no-adb`, `--no-bluetooth`, or `--no-codex-appserver` only when that behavior is intentional.
 
 On macOS, automatic Claude account quotas require access to the existing
 `Claude Code-credentials` Keychain item. Choosing **Always Allow** at the first
@@ -33,6 +33,8 @@ OAuth lane disabled for that collector run; it will not ask again every polling
 interval. Claude CLI status-line observations remain independent of this access.
 
 When ADB is available, the installer records its absolute executable path so macOS and Windows startup services do not depend on an interactive shell's `PATH`; explicit `--adb-command` and `--adb-serial` selections survive upgrades. The collector atomically mirrors the latest bounded snapshot into the device's loopback-only web root and retries after transient USB failures. After confirming the attached device reports `ID=claudething`, it also repairs a stale device clock from the host before updating the dashboard.
+
+On macOS, the collector prefers that USB path and automatically uses Bluetooth only while USB is unavailable. The first Bluetooth attempt may trigger macOS's one-time Bluetooth privacy prompt. Pairing is also one-time; the Bluetooth link reconnects without a button/replug sequence afterward. If exactly one paired device is named `ClaudeThing Display`, it is selected automatically. Install with `--bluetooth-address XX-XX-XX-XX-XX-XX` when multiple displays are paired.
 
 Default token locations:
 
@@ -104,7 +106,7 @@ node release/device/device-tool.mjs provision-firmware \
 The command:
 
 - refuses non-ClaudeThing firmware;
-- writes only `/var/lib/claudething/runtime-config.js`;
+- writes `/var/lib/claudething/runtime-config.js` plus a root-only `/var/lib/claudething/pairing.token` used to authenticate Bluetooth snapshots;
 - copies the host's IANA time zone (for example `America/Los_Angeles`) unless `--time-zone` overrides it;
 - stores the selected YouTube channel and GA4 property display names (1–100 characters each);
 - re-establishes `adb reverse tcp:8790 tcp:8790`;
@@ -112,6 +114,18 @@ The command:
 - waits for active services plus a successful loopback HTTP response before reporting success.
 
 This is application provisioning, not flashing.
+
+### Optional macOS Bluetooth data fallback
+
+Keep the device directly attached by USB for provisioning, then open its two-minute pairing window:
+
+```sh
+node release/device/device-tool.mjs bluetooth-pairing
+```
+
+Open **System Settings → Bluetooth** and connect to **ClaudeThing Display**. Approve the macOS Bluetooth privacy prompt if it appears. The collector continues to prefer USB automatically. If the device later receives power from a hub that does not pass its USB data connection, the collector sends the same bounded snapshot over the paired Bluetooth link instead; no config switch or recurring pairing step is required. The signed envelope also carries an authenticated host timestamp so a cold boot over a power-only hub can repair the display clock.
+
+Bluetooth does not replace the recovery connection. Use direct USB for firmware flashing, `provision-firmware`, and `doctor`.
 
 Preset 3 opens the additional dashboard gallery. In YouTube and GA4, turn the dial to switch Daily, Weekly, Monthly, and Year ranges; the dial stays within that analytics module. Markets automatically advance through every configured instrument after `rotationSeconds`; turning the dial changes the instrument immediately and restarts that timer. YouTube owner analytics require OAuth access to the channel; GA4 requires a user or service account granted access to the property. Those credentials and refresh tokens belong in future host adapters and must never be copied to the device. Until an authenticated adapter supplies a series, the gallery renders its built-in demonstration data without presenting an authentication control on the 800×480 display.
 
@@ -121,7 +135,7 @@ Preset 3 opens the additional dashboard gallery. In YouTube and GA4, turn the di
 node release/device/device-tool.mjs doctor
 ```
 
-On ClaudeThing firmware, the doctor independently checks distro identity, the BusyBox HTTP applet, display service, dashboard service, browser service, and dashboard HTTP response. A passing doctor must still be paired with a human screen report.
+On ClaudeThing firmware, the doctor independently checks distro identity, the BusyBox HTTP applet, display service, Bluetooth radio and snapshot receiver, dashboard service, browser service, and dashboard HTTP response. A passing doctor must still be paired with a human screen report.
 
 Acceptance checklist:
 
@@ -130,8 +144,9 @@ Acceptance checklist:
 - The clock matches the provisioned zone and the System screen names that zone.
 - Claude quotas appear from the signed-in Claude CLI credential without requiring a model prompt. Terminal-CLI status-line events remain a second source for local activity totals, and the last valid quota survives collector restart.
 - Dial rotation, dial press, Back, presets, touch, and swipes work without missed or doubled actions.
-- Cable removal produces an honestly aged offline view; reconnect restores live data without a page reload.
-- Reboot returns to the dashboard and the host resumes the USB snapshot mirror.
+- With Bluetooth unpaired, cable removal produces an honestly aged offline view; reconnect restores live data without a page reload.
+- With Bluetooth paired on macOS, moving power to a non-enumerating hub switches the collector from USB to Bluetooth and returns both feeds to live without re-pairing.
+- Reboot returns to the dashboard and the host resumes the best available USB or Bluetooth snapshot path.
 
 ## 8. Failure interpretation
 
@@ -143,6 +158,7 @@ Acceptance checklist:
 | Services are active but the screen is unchanged | Inspect loopback HTTP and kiosk logs; do not call the deployment successful until pixels change. |
 | Dashboard is live but Claude quota is stale or shows "Claude login expired" | Claude quota updates via the CLI's stored login on a five-minute base cadence. The collector refreshes an expiring access token without issuing a model request; provider rate limits trigger bounded Retry-After/exponential backoff, and transient failures retain the last-good observation. Run `claude auth login` only when the refresh grant itself has expired or been revoked. Status-line events remain a second live source during CLI sessions. |
 | Clock is UTC | Re-run `provision-firmware`; do not hard-code a numeric offset because daylight saving changes it. |
+| USB is unavailable and Bluetooth remains stale | Confirm `ClaudeThing Display` is paired in macOS, approve Bluetooth privacy access, and inspect the collector health object's `bluetooth.lastError`. Direct USB remains required for provisioning and `doctor`. |
 
 ## 9. Host uninstall
 

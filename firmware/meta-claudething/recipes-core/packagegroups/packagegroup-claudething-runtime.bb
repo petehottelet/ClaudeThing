@@ -10,6 +10,7 @@ PACKAGES = "${PN}"
 RDEPENDS:${PN} = " \
     packagegroup-superbird-runtime \
     claudething-ui \
+    claudething-bluetooth \
     mesa \
     weston \
     blank-cursor \

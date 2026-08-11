@@ -16,6 +16,6 @@ The corresponding license texts are included in the release `licenses/` director
 The `firmware/` directory contains ClaudeThing-authored metadata, scripts, service definitions, and application integration under the repository's MIT License. Firmware builds fetch pinned external projects instead of vendoring their source:
 
 - `JoeyEamigh/yocto-superbird` - generic Car Thing board-support layer; the pinned revision and upstream license declaration are recorded in `firmware/kas/claudething.yml` and `firmware/README.md`.
-- Yocto Project, OpenEmbedded, BitBake, `meta-meson`, `meta-openembedded`, `meta-browser`, Linux, Chromium, Weston, Mesa, systemd, BusyBox, and their transitive packages - their own upstream licenses apply.
+- Yocto Project, OpenEmbedded, BitBake, `meta-meson`, `meta-openembedded`, `meta-browser`, Linux, Chromium, Weston, Mesa, systemd, BusyBox, BlueZ, OpenSSL, and their transitive packages - their own upstream licenses apply. BlueZ and OpenSSL are direct runtime/build dependencies of the device-side Bluetooth receiver.
 
 Yocto generates package license manifests for each assembled image. Those manifests, rather than this summary, are the authoritative inventory for a particular firmware artifact. Distributing a firmware image requires shipping its generated license manifest and corresponding license texts. No third-party dashboard source, binary, patch, asset, or release artifact is included or required.

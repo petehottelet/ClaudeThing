@@ -61,12 +61,22 @@ try {
     throw new Error("installer did not preserve the seeded pairing token");
   }
   await stat(path.join(installRoot, "collector", "collector.cjs"));
+  if (process.platform === "darwin") {
+    await stat(path.join(installRoot, "collector", "claudething-bluetooth-helper"));
+  }
   await stat(path.join(installRoot, "device-ui", "index.html"));
   const installManifest = path.join(installRoot, "install-manifest.json");
   await stat(installManifest);
   const firstManifest = JSON.parse(await readFile(installManifest, "utf8"));
   if (firstManifest.adbCommand !== "/opt/example/adb" || firstManifest.adbSerial !== "SMOKE-CARTHING") {
     throw new Error("installer did not persist the ADB startup configuration");
+  }
+  if (process.platform === "darwin" && firstManifest.bluetoothHelper !== path.join(
+    installRoot,
+    "collector",
+    "claudething-bluetooth-helper",
+  )) {
+    throw new Error("installer did not enable the bundled macOS Bluetooth helper");
   }
   const dashboardConfig = path.join(installRoot, "dashboard-config.jsonc");
   await stat(dashboardConfig);
@@ -92,6 +102,9 @@ try {
   const secondManifest = JSON.parse(await readFile(installManifest, "utf8"));
   if (secondManifest.adbCommand !== firstManifest.adbCommand || secondManifest.adbSerial !== firstManifest.adbSerial) {
     throw new Error("idempotent reinstall lost the ADB startup configuration");
+  }
+  if (secondManifest.bluetoothHelper !== firstManifest.bluetoothHelper) {
+    throw new Error("idempotent reinstall lost the Bluetooth startup configuration");
   }
   if (!(await readFile(dashboardConfig, "utf8")).includes('"rotationSeconds": 17')) {
     throw new Error("reinstall replaced the human-edited dashboard config");
@@ -128,7 +141,7 @@ try {
   if ((await readFile(path.join(installRoot, "pairing.token"), "utf8")).trim() !== token) {
     throw new Error("mismatch check changed the installed token");
   }
-  console.log("install smoke: token sharing, dashboard-config preservation, staged copy, status-line preservation, idempotence, and mismatch refusal passed");
+  console.log("install smoke: token sharing, dashboard-config preservation, staged copy, transport persistence, status-line preservation, idempotence, and mismatch refusal passed");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

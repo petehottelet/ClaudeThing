@@ -1,0 +1,10 @@
+[Unit]
+Description=ClaudeThing temporary Bluetooth pairing window
+After=superbird-bluetooth.service bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/claudething-bluetooth-pairing 120
+RuntimeMaxSec=130
+TimeoutStopSec=5

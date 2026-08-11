@@ -22,6 +22,10 @@ const required = [
   "firmware/meta-claudething/recipes-graphics/weston-init/files/claudething-splash.png",
   "firmware/meta-claudething/recipes-claudething/claudething-ui/claudething-ui_1.0.0.bb",
   "firmware/meta-claudething/recipes-claudething/claudething-ui/files/claudething-ui.service",
+  "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/claudething-bluetooth_1.0.0.bb",
+  "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/files/claudething-bluetooth-receiver.c",
+  "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/files/claudething-bluetooth.service",
+  "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/files/claudething-bluetooth-pairing.service",
   "firmware/meta-claudething/recipes-graphics/chromium-kiosk/files/claudething-ui-ready",
 ];
 
@@ -106,6 +110,32 @@ const service = await readFile(
 );
 if (!service.includes("NoNewPrivileges=yes") || !service.includes("ProtectSystem=strict")) {
   throw new Error("Dashboard service hardening was removed.");
+}
+
+const bluetoothService = await readFile(
+  resolve(
+    repository,
+    "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/files/claudething-bluetooth.service",
+  ),
+  "utf8",
+);
+for (const value of ["UMask=0077", "NoNewPrivileges=true", "ProtectSystem=strict", "ReadWritePaths=/run/claudething-ui"]) {
+  if (!bluetoothService.includes(value)) {
+    throw new Error(`Bluetooth receiver hardening was removed: ${value}`);
+  }
+}
+
+const bluetoothReceiver = await readFile(
+  resolve(
+    repository,
+    "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/files/claudething-bluetooth-receiver.c",
+  ),
+  "utf8",
+);
+for (const value of ["BT_SECURITY_MEDIUM", "CLAUDETHING_MAX_SNAPSHOT", "HMAC_Update", "CRYPTO_memcmp", "settimeofday", "rename(temporary"]) {
+  if (!bluetoothReceiver.includes(value)) {
+    throw new Error(`Bluetooth receiver security invariant is missing: ${value}`);
+  }
 }
 
 const httpdConfig = await readFile(

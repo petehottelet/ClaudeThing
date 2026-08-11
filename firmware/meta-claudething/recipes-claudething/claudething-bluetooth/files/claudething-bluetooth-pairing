@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+
+duration="${1:-120}"
+case "$duration" in
+    ''|*[!0-9]*) exit 2 ;;
+esac
+if [ "$duration" -lt 30 ] || [ "$duration" -gt 300 ]; then
+    exit 2
+fi
+
+cleanup() {
+    bluetoothctl discoverable off >/dev/null 2>&1 || true
+    bluetoothctl pairable off >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
+{
+    printf '%s\n' \
+        'power on' \
+        'system-alias ClaudeThing Display' \
+        'agent NoInputNoOutput' \
+        'default-agent' \
+        "discoverable-timeout $duration" \
+        'pairable on' \
+        'discoverable on'
+    sleep "$duration"
+    printf '%s\n' 'discoverable off' 'pairable off' 'quit'
+} | bluetoothctl

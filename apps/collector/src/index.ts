@@ -31,6 +31,7 @@ import { CodexAppServerAdapter } from "./adapters/codex-appserver";
 import path from "node:path";
 import { readJsonFile, writeJsonAtomic } from "./util";
 import { AdbTunnelSupervisor } from "./adb";
+import { BluetoothSnapshotSupervisor } from "./bluetooth";
 import { DashboardConfigStore } from "./dashboard-config";
 import { OptionalProviderManager } from "./optional-providers";
 
@@ -82,6 +83,7 @@ async function main(): Promise<void> {
   let appServer: CodexAppServerAdapter | null = null;
   let claudeOauth: ClaudeOauthAdapter | null = null;
   let adbTunnel: AdbTunnelSupervisor | null = null;
+  let bluetooth: BluetoothSnapshotSupervisor | null = null;
   let optionalProviders: OptionalProviderManager | null = null;
   const peerIdentityFile = path.join(config.dataDir, "peer-identity.json");
   const claudeStatuslineStateFile = path.join(config.dataDir, "claude-statusline-state.json");
@@ -143,6 +145,7 @@ async function main(): Promise<void> {
       }),
       peer: peerSync ? peerSync.status() : null,
       adb: adbTunnel ? adbTunnel.status() : { enabled: false },
+      bluetooth: bluetooth ? bluetooth.status() : { enabled: false },
       stream: {
         clients: server.clientCount(),
         lastClientActivityAt: server.lastClientActivityAt() === null
@@ -273,6 +276,16 @@ async function main(): Promise<void> {
       snapshot: getSnapshot,
       lastClientActivityAt: () => server.lastClientActivityAt(),
     });
+    bluetooth = new BluetoothSnapshotSupervisor({
+      enabled: config.bluetoothEnabled,
+      helperCommand: config.bluetoothHelper,
+      address: config.bluetoothAddress,
+      channel: config.bluetoothChannel,
+      intervalMs: 15_000,
+      token,
+      snapshot: getSnapshot,
+      usbConnected: () => adbTunnel?.status().connected ?? false,
+    });
 
     if (config.peerUrl) {
       peerSync = new PeerSync({
@@ -293,6 +306,7 @@ async function main(): Promise<void> {
   // The host endpoint must be listening before the first reverse mapping is
   // configured; otherwise the kiosk can race into a connection-refused loop.
   adbTunnel?.start();
+  bluetooth?.start();
   console.log(
     `[collector] v${COLLECTOR_VERSION} listening on port ${port} as host "${config.hostName}"` +
       (config.mock !== null ? ` (mock fixture: ${config.mock}, refresh ${MOCK_REFRESH_MS / 1000}s)` : ""),
@@ -308,6 +322,7 @@ async function main(): Promise<void> {
     appServer?.stop();
     claudeOauth?.stop();
     adbTunnel?.stop();
+    bluetooth?.stop();
     optionalProviders?.stop();
     void server.close().then(() => process.exit(0));
     setTimeout(() => process.exit(0), 2000).unref();

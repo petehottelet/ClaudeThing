@@ -84,6 +84,9 @@ const allowedFlags = new Set([
   "no-adb",
   "adb-command",
   "adb-serial",
+  "no-bluetooth",
+  "bluetooth-helper",
+  "bluetooth-address",
   "no-codex-appserver",
   "codex-command",
   "dashboard-config",
@@ -100,6 +103,9 @@ if (args.has("help")) {
   --no-adb                     disable automatic USB tunnel recovery
   --adb-command FILE           custom ADB executable (auto-detected when available)
   --adb-serial ID              select one ADB device
+  --no-bluetooth               disable the macOS Bluetooth data fallback
+  --bluetooth-helper FILE      custom macOS RFCOMM sender executable
+  --bluetooth-address ADDRESS  select one paired ClaudeThing display
   --no-codex-appserver         disable Codex quota-window collection
   --codex-command COMMAND      override the Codex app-server command
                                (macOS auto-detects ChatGPT's bundled binary)
@@ -307,6 +313,34 @@ const adbSerial = args.get("adb-serial")
   ?? (typeof previousInstallManifest.adbSerial === "string" ? previousInstallManifest.adbSerial : null);
 if (adbCommand) collectorArgs.push("--adb-command", adbCommand);
 if (adbSerial) collectorArgs.push("--adb-serial", adbSerial);
+let bluetoothHelper = args.get("bluetooth-helper")
+  ?? (typeof previousInstallManifest.bluetoothHelper === "string" ? previousInstallManifest.bluetoothHelper : null);
+if (!bluetoothHelper && system === "darwin") {
+  const bundledHelper = join(collectorDir, "claudething-bluetooth-helper");
+  try {
+    if ((await stat(bundledHelper)).isFile()) bluetoothHelper = bundledHelper;
+  } catch {
+    // Packages built on non-macOS hosts intentionally omit the helper.
+  }
+}
+if (bluetoothHelper) {
+  try {
+    if (!(await stat(bluetoothHelper)).isFile()) throw new Error("not a file");
+  } catch {
+    if (args.has("bluetooth-helper")) {
+      throw new Error(`Bluetooth helper is not a file: ${bluetoothHelper}`);
+    }
+    bluetoothHelper = null;
+  }
+}
+const bluetoothAddress = args.get("bluetooth-address")
+  ?? (typeof previousInstallManifest.bluetoothAddress === "string" ? previousInstallManifest.bluetoothAddress : null);
+if (bluetoothAddress && !/^[0-9A-Fa-f]{2}(?::|-)[0-9A-Fa-f]{2}(?:(?::|-)[0-9A-Fa-f]{2}){4}$/.test(bluetoothAddress)) {
+  throw new Error("--bluetooth-address must contain six hexadecimal octets.");
+}
+if (args.has("no-bluetooth")) collectorArgs.push("--no-bluetooth");
+else if (bluetoothHelper) collectorArgs.push("--bluetooth-helper", bluetoothHelper);
+if (bluetoothAddress) collectorArgs.push("--bluetooth-address", bluetoothAddress);
 if (args.has("no-codex-appserver")) collectorArgs.push("--no-codex-appserver");
 let codexCommand = args.get("codex-command") ?? null;
 if (!codexCommand && !args.has("no-codex-appserver") && system === "darwin") {
@@ -325,7 +359,16 @@ await writeAtomic(
 );
 await writeAtomic(
   installManifestFile,
-  `${JSON.stringify({ product: "carthing-usage-dashboard", version: 1, hostName, port, adbCommand, adbSerial }, null, 2)}\n`,
+  `${JSON.stringify({
+    product: "carthing-usage-dashboard",
+    version: 1,
+    hostName,
+    port,
+    adbCommand,
+    adbSerial,
+    bluetoothHelper,
+    bluetoothAddress,
+  }, null, 2)}\n`,
   0o600,
 );
 
