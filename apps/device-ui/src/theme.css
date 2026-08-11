@@ -563,6 +563,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.rail .rail-transport {
+  color: var(--ink-2);
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.45px;
+  margin-left: 16px;
+  white-space: nowrap;
+}
+
 .rail .spark {
   color: var(--hot);
   font-weight: 800;

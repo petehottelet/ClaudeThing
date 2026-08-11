@@ -18,12 +18,11 @@ trap cleanup EXIT INT TERM
 {
     printf '%s\n' \
         'power on' \
-        'system-alias ClaudeThing Display' \
-        'agent NoInputNoOutput' \
+        'system-alias "ClaudeThing Display"' \
         'default-agent' \
         "discoverable-timeout $duration" \
         'pairable on' \
         'discoverable on'
     sleep "$duration"
     printf '%s\n' 'discoverable off' 'pairable off' 'quit'
-} | bluetoothctl
+} | bluetoothctl --agent NoInputNoOutput

@@ -310,7 +310,13 @@ export default function App() {
   return (
     <div className="stage" ref={stageRef}>
       {content}
-      <StatusRail state={rail.state} detail={rail.detail} right={rail.right} />
+      <StatusRail
+        state={rail.state}
+        detail={rail.detail}
+        right={rail.right}
+        transport={source.snapshot?.transport}
+        link={source.link}
+      />
     </div>
   );
 }

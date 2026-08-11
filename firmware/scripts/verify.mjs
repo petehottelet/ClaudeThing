@@ -138,6 +138,19 @@ for (const value of ["BT_SECURITY_MEDIUM", "CLAUDETHING_MAX_SNAPSHOT", "HMAC_Upd
   }
 }
 
+const bluetoothPairing = await readFile(
+  resolve(
+    repository,
+    "firmware/meta-claudething/recipes-claudething/claudething-bluetooth/files/claudething-bluetooth-pairing",
+  ),
+  "utf8",
+);
+for (const value of ['system-alias "ClaudeThing Display"', "bluetoothctl --agent NoInputNoOutput"]) {
+  if (!bluetoothPairing.includes(value)) {
+    throw new Error(`Bluetooth code-free pairing invariant is missing: ${value}`);
+  }
+}
+
 const httpdConfig = await readFile(
   resolve(
     repository,

@@ -288,6 +288,24 @@ export interface ProviderSnapshot {
   diagnostic: string | null;
 }
 
+export type SnapshotTransportKind = "usb" | "bluetooth";
+
+/** Host-to-display delivery state captured with the snapshot. This is
+ * optional so cached snapshots and collectors from before transport
+ * telemetry remain valid. */
+export interface SnapshotTransportStatus {
+  active: SnapshotTransportKind | null;
+  usb: {
+    enabled: boolean;
+    connected: boolean;
+  };
+  bluetooth: {
+    enabled: boolean;
+    connected: boolean;
+    standbyForUsb: boolean;
+  };
+}
+
 export interface Snapshot {
   schemaVersion: number;
   collectorVersion: string;
@@ -301,6 +319,9 @@ export interface Snapshot {
   /** Validated display preferences. Optional for compatibility with cached
    * snapshots and older peers. */
   dashboardConfig?: DashboardConfig;
+  /** Delivery path used for this snapshot and availability of each local
+   * device transport. */
+  transport?: SnapshotTransportStatus;
 }
 
 // ---------------------------------------------------------------------------
@@ -737,7 +758,20 @@ export function isSnapshot(x: unknown): x is Snapshot {
     Array.isArray(providers) &&
     providers.length <= 128 &&
     providers.every(isProviderSnapshot) &&
-    (x.dashboardConfig === undefined || isDashboardConfig(x.dashboardConfig))
+    (x.dashboardConfig === undefined || isDashboardConfig(x.dashboardConfig)) &&
+    (x.transport === undefined || isSnapshotTransportStatus(x.transport))
+  );
+}
+
+function isSnapshotTransportStatus(x: unknown): x is SnapshotTransportStatus {
+  if (!isObjectRecord(x) || !isObjectRecord(x.usb) || !isObjectRecord(x.bluetooth)) return false;
+  return (
+    (x.active === null || x.active === "usb" || x.active === "bluetooth") &&
+    typeof x.usb.enabled === "boolean" &&
+    typeof x.usb.connected === "boolean" &&
+    typeof x.bluetooth.enabled === "boolean" &&
+    typeof x.bluetooth.connected === "boolean" &&
+    typeof x.bluetooth.standbyForUsb === "boolean"
   );
 }
 

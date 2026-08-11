@@ -8,7 +8,13 @@
  * the device UI sees a live-looking stream without real telemetry.
  */
 
-import { SCHEMA_VERSION, type ProviderSnapshot, type Snapshot } from "@carthing/contracts";
+import {
+  SCHEMA_VERSION,
+  type ProviderSnapshot,
+  type Snapshot,
+  type SnapshotTransportKind,
+  type SnapshotTransportStatus,
+} from "@carthing/contracts";
 import { makeFixture } from "@carthing/contracts/fixtures";
 import { COLLECTOR_VERSION, loadConfig, type CollectorConfig } from "./config";
 import { ObservationStore } from "./state";
@@ -114,11 +120,39 @@ async function main(): Promise<void> {
     return hosts;
   };
 
-  const getSnapshot = (): Snapshot => ({
+  const transportStatus = (activeOverride?: SnapshotTransportKind): SnapshotTransportStatus => {
+    const usb = adbTunnel?.status() ?? {
+      enabled: config.adbEnabled,
+      connected: false,
+    };
+    const bt = bluetooth?.status() ?? {
+      enabled: config.bluetoothEnabled,
+      connected: false,
+      standbyForUsb: false,
+    };
+    const active =
+      activeOverride ?? (usb.connected ? "usb" : bt.connected ? "bluetooth" : null);
+    return {
+      active,
+      usb: {
+        enabled: usb.enabled,
+        connected: active === "usb" || usb.connected,
+      },
+      bluetooth: {
+        enabled: bt.enabled,
+        connected: active === "bluetooth" || bt.connected,
+        standbyForUsb:
+          active === "bluetooth" ? false : bt.standbyForUsb || (active === "usb" && bt.enabled),
+      },
+    };
+  };
+
+  const getSnapshot = (activeTransport?: SnapshotTransportKind): Snapshot => ({
     ...(config.mock !== null
       ? makeFixture(config.mock, Date.now())
       : store.assembleSnapshot({ expectedHosts: expectedHosts() })),
     dashboardConfig: dashboardConfigStore.current(),
+    transport: transportStatus(activeTransport),
   });
 
   const getHealth = (): unknown => {
@@ -273,7 +307,7 @@ async function main(): Promise<void> {
       serial: config.adbSerial,
       port: config.port,
       intervalMs: 15_000,
-      snapshot: getSnapshot,
+      snapshot: () => getSnapshot("usb"),
       lastClientActivityAt: () => server.lastClientActivityAt(),
     });
     bluetooth = new BluetoothSnapshotSupervisor({
@@ -283,7 +317,7 @@ async function main(): Promise<void> {
       channel: config.bluetoothChannel,
       intervalMs: 15_000,
       token,
-      snapshot: getSnapshot,
+      snapshot: () => getSnapshot("bluetooth"),
       usbConnected: () => adbTunnel?.status().connected ?? false,
     });
 

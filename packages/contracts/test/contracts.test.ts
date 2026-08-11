@@ -136,6 +136,26 @@ describe("fixtures", () => {
     expect(
       isSnapshot({
         ...valid,
+        transport: {
+          active: "usb",
+          usb: { enabled: true, connected: true },
+          bluetooth: { enabled: true, connected: false, standbyForUsb: true },
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isSnapshot({
+        ...valid,
+        transport: {
+          active: "wifi",
+          usb: { enabled: true, connected: true },
+          bluetooth: { enabled: true, connected: false, standbyForUsb: true },
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isSnapshot({
+        ...valid,
         dashboardConfig: {
           ...DEFAULT_DASHBOARD_CONFIG,
           markets: { ...DEFAULT_DASHBOARD_CONFIG.markets, rotationSeconds: 0 },

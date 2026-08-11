@@ -90,7 +90,7 @@ The rotary dial changes Daily, Weekly, Monthly, and Year ranges inside YouTube a
 - Native Cursor, Gemini, Droid, and Copilot collectors, enabled only when selected, with plan identity, every available quota bucket, extra usage/overage, balances, costs, and provider-specific history where the signed-in account exposes them.
 - A [65-provider catalog](docs/PROVIDER_CATALOG.md), with a unique explanation for every source, plus a validated JSON bridge for provider APIs, CLIs, scripts, and agent-written integrations. Unknown providers can use the same bridge contract without a firmware rebuild.
 - Honest live, stale, unavailable, error, and offline states; missing data never becomes a fabricated zero.
-- Atomic USB snapshot mirroring with an encrypted, HMAC-authenticated macOS Bluetooth fallback, authenticated HTTP/WebSocket transport for direct connections, multi-host merge rules, and an honestly aged device cache.
+- Atomic USB snapshot mirroring with an encrypted, HMAC-authenticated macOS Bluetooth fallback, authenticated HTTP/WebSocket transport for direct connections, multi-host merge rules, an honestly aged device cache, and visible `USB ACTIVE` / `BT ACTIVE` transport state in the bottom rail.
 - Touch, horizontal swipes, rotary dial, dial press, Back, presets, and a System screen.
 - An original Yocto product layer with ClaudeThing identity, boot artwork, loopback HTTP service, browser readiness gate, and development/production image recipes.
 - Host time-zone provisioning plus identity-guarded clock repair on USB reconnect, so the device clock and calendar buckets follow the attached computer, including daylight-saving changes.
