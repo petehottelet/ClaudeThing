@@ -82,6 +82,23 @@ export class AdbTunnelSupervisor {
       const state = await runner(this.opts.command ?? "adb", [...prefix, "get-state"]);
       if (state.code !== 0 || state.stdout.trim() !== "device") return this.fail("ADB_DEVICE_UNAVAILABLE");
       const now = this.opts.now?.() ?? Date.now();
+      if (this.state.connected) {
+        const probe = await runner(this.opts.command ?? "adb", [
+          ...prefix,
+          "shell",
+          "wget",
+          "-q",
+          "-T",
+          "4",
+          "-O",
+          "/dev/null",
+          `http://127.0.0.1:${this.opts.port}/v1/transport-probe`,
+        ]);
+        if (probe.code === 0) {
+          this.succeed(now);
+          return true;
+        }
+      }
       if (!this.state.connected) {
         const clockReady = await this.syncClaudeThingClock(runner, prefix, now);
         if (!clockReady) return this.fail("ADB_TIME_SYNC_FAILED");
@@ -89,13 +106,7 @@ export class AdbTunnelSupervisor {
       const endpoint = `tcp:${this.opts.port}`;
       const reverse = await runner(this.opts.command ?? "adb", [...prefix, "reverse", endpoint, endpoint]);
       if (reverse.code !== 0) return this.fail("ADB_REVERSE_FAILED");
-      this.state = {
-        ...this.state,
-        connected: true,
-        lastSuccessAt: new Date(now).toISOString(),
-        lastError: null,
-        consecutiveFailures: 0,
-      };
+      this.succeed(now);
       return true;
     } catch {
       return this.fail("ADB_NOT_FOUND");
@@ -135,5 +146,15 @@ export class AdbTunnelSupervisor {
       consecutiveFailures: this.state.consecutiveFailures + 1,
     };
     return false;
+  }
+
+  private succeed(nowMs: number): void {
+    this.state = {
+      ...this.state,
+      connected: true,
+      lastSuccessAt: new Date(nowMs).toISOString(),
+      lastError: null,
+      consecutiveFailures: 0,
+    };
   }
 }

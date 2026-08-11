@@ -28,6 +28,49 @@ describe("AdbTunnelSupervisor", () => {
     expect(supervisor.status()).toMatchObject({ connected: true, consecutiveFailures: 0, lastError: null });
   });
 
+  it("probes a healthy tunnel without resetting its reverse mapping", async () => {
+    const calls: string[][] = [];
+    const runner: AdbRunner = async (_command, args) => {
+      calls.push(args);
+      if (args.includes("get-state")) return { code: 0, stdout: "device\n", stderr: "" };
+      return { code: 0, stdout: "", stderr: "" };
+    };
+    const supervisor = new AdbTunnelSupervisor({ enabled: true, port: 8790, runner });
+
+    expect(await supervisor.tick()).toBe(true);
+    calls.length = 0;
+    expect(await supervisor.tick()).toBe(true);
+    expect(calls).toEqual([
+      ["get-state"],
+      [
+        "shell", "wget", "-q", "-T", "4", "-O", "/dev/null",
+        "http://127.0.0.1:8790/v1/transport-probe",
+      ],
+    ]);
+    expect(calls.some((args) => args.includes("reverse"))).toBe(false);
+  });
+
+  it("repairs the reverse mapping when the non-disruptive probe fails", async () => {
+    const calls: string[][] = [];
+    let probes = 0;
+    const runner: AdbRunner = async (_command, args) => {
+      calls.push(args);
+      if (args.includes("get-state")) return { code: 0, stdout: "device\n", stderr: "" };
+      if (args.includes("wget")) {
+        probes += 1;
+        return { code: 1, stdout: "", stderr: "connection refused" };
+      }
+      return { code: 0, stdout: "", stderr: "" };
+    };
+    const supervisor = new AdbTunnelSupervisor({ enabled: true, port: 8790, runner });
+
+    expect(await supervisor.tick()).toBe(true);
+    calls.length = 0;
+    expect(await supervisor.tick()).toBe(true);
+    expect(probes).toBe(1);
+    expect(calls.at(-1)).toEqual(["reverse", "tcp:8790", "tcp:8790"]);
+  });
+
   it("repairs a stale ClaudeThing clock before restoring the tunnel", async () => {
     const calls: string[][] = [];
     const now = Date.parse("2026-08-08T12:00:00Z");

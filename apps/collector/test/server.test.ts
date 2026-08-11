@@ -6,7 +6,11 @@ import path from "node:path";
 import { isSnapshot } from "@carthing/contracts";
 import { COLLECTOR_VERSION } from "../src/config";
 import { ObservationStore } from "../src/state";
-import { createCollectorServer, type CollectorServer } from "../src/server";
+import {
+  createCollectorServer,
+  isLoopbackAddress,
+  type CollectorServer,
+} from "../src/server";
 import { parseClaudeStatusline } from "../src/adapters/claude-statusline";
 
 const TOKEN = "test-secret";
@@ -40,6 +44,16 @@ const base = (): string => `http://127.0.0.1:${port}`;
 const auth = { authorization: `Bearer ${TOKEN}` };
 
 describe("collector server auth", () => {
+  it("exposes only an empty loopback liveness probe without authentication", async () => {
+    const res = await fetch(`${base()}/v1/transport-probe`);
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(isLoopbackAddress("127.0.0.1")).toBe(true);
+    expect(isLoopbackAddress("::ffff:127.0.0.1")).toBe(true);
+    expect(isLoopbackAddress("192.168.1.20")).toBe(false);
+  });
+
   it("serves the packaged UI without exposing telemetry or weakening headers", async () => {
     const uiDir = await mkdtemp(path.join(os.tmpdir(), "carthing-ui-"));
     await mkdir(path.join(uiDir, "assets"));

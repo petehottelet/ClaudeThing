@@ -1,7 +1,8 @@
 /**
  * HTTP + WebSocket server for the collector.
  *
- * Routes (all token-gated; LAN-local trust model, the pairing token is the gate):
+ * Routes (telemetry routes are token-gated; the loopback probe has no data):
+ *   GET  /v1/transport-probe           loopback-only empty liveness response
  *   GET  /v1/snapshot                  merged Snapshot
  *   GET  /v1/health                    versions, observation ages, peer status
  *   GET  /v1/peer/observations         raw local observations for peer sync
@@ -40,6 +41,10 @@ export interface CollectorServer {
 
 const MAX_BODY_BYTES = 512 * 1024;
 const HEARTBEAT_MS = 15_000;
+
+export function isLoopbackAddress(address: string | undefined): boolean {
+  return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+}
 
 export function createCollectorServer(deps: CollectorServerDeps): CollectorServer {
   const wss = new WebSocketServer({
@@ -195,6 +200,23 @@ export function createCollectorServer(deps: CollectorServerDeps): CollectorServe
     }
 
     if (await serveUi(req, res, url)) return;
+
+    // ADB's host-side reverse listener connects from loopback. This empty
+    // endpoint lets the supervisor validate an existing mapping without
+    // re-creating it and interrupting the dashboard's active WebSocket.
+    if (
+      req.method === "GET" &&
+      url.pathname === "/v1/transport-probe" &&
+      isLoopbackAddress(req.socket.remoteAddress)
+    ) {
+      res.writeHead(204, {
+        "cache-control": "no-store",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
+      });
+      res.end();
+      return;
+    }
 
     if (!httpTokenOk(req)) {
       json(req, res, 401, { error: "unauthorized" });
