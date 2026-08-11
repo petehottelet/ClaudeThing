@@ -48,7 +48,7 @@ A collector on the attached computer reads local telemetry and atomically mirror
 
 ClaudeThing is a non-profit, community open-source project. It is not affiliated with, endorsed by, sponsored by, or supported by Anthropic, OpenAI, Google, Spotify, or any other AI lab, model provider, platform vendor, or hardware manufacturer.
 
-The persistent development firmware has booted on real hardware and displayed live Claude and Codex data. Display, USB ADB, the host tunnel, dashboard HTTP service, Chromium kiosk, and physical dial input have been exercised. Claude quota updates use the signed-in local CLI credential with automatic OAuth refresh, retained last-good state, rate-limit-aware polling, and status-line observations as a second source. Production firmware, unattended recovery, and the full physical-control/soak matrix remain release gates.
+The persistent development firmware has booted on real hardware and displayed live Claude and Codex data. Display, USB ADB, the host tunnel, dashboard HTTP service, Chromium kiosk, and physical dial input have been exercised. Claude quota updates use the signed-in local CLI credential with automatic OAuth refresh, retained last-good state, rate-limit-aware polling, and status-line observations as a second source. On macOS, this requires a one-time Keychain authorization; denying it disables that lane for the collector run instead of repeating the prompt. Production firmware, unattended recovery, and the full physical-control/soak matrix remain release gates.
 
 ## Install with a coding agent
 

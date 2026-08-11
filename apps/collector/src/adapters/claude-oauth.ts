@@ -120,6 +120,8 @@ export class ClaudeOauthAdapter {
   private readonly opts: ClaudeOauthOptions;
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  private cachedCredential: OauthCredential | null = null;
+  private credentialAccessUnavailable = false;
   private hasLiveObservation: boolean;
   private transientFailures = 0;
   private backoffUntilMs = 0;
@@ -163,15 +165,22 @@ export class ClaudeOauthAdapter {
   }
 
   async tick(): Promise<boolean> {
-    if (this.running) return false;
+    if (this.running || this.credentialAccessUnavailable) return false;
     const tickNowMs = this.opts.now?.() ?? Date.now();
     if (tickNowMs < this.backoffUntilMs) return false;
     this.running = true;
     try {
       const nowMs = tickNowMs;
       const read = this.opts.readCredential ?? readCliCredential;
-      let cred: OauthCredential = await read();
-      if (!cred.present) return false; // No CLI login on this host: stay silent.
+      let cred: OauthCredential = this.cachedCredential ?? await read();
+      if (!cred.present) {
+        // A missing store and a denied macOS Keychain request are intentionally
+        // indistinguishable here. Do not keep retrying in the background: that
+        // would turn one denied request into a password prompt every poll.
+        this.credentialAccessUnavailable = true;
+        return false;
+      }
+      this.cachedCredential = cred;
       const needsRefresh = !cred.accessToken || (
         cred.expiresAt !== null && cred.expiresAt <= nowMs + CLAUDE_TOKEN_REFRESH_WINDOW_MS
       );
@@ -189,6 +198,7 @@ export class ClaudeOauthAdapter {
           return false;
         }
         cred = result.credential;
+        this.cachedCredential = cred;
       }
       if (!cred.accessToken) {
         this.emit("unavailable", [], null, "CLAUDE_AUTH_EXPIRED");
@@ -220,6 +230,7 @@ export class ClaudeOauthAdapter {
           return false;
         }
         cred = result.credential;
+        this.cachedCredential = cred;
         res = await fetchUsage(rotatedAccessToken);
       }
       if (res.status === 401 || res.status === 403) {

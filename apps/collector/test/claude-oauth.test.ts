@@ -203,18 +203,46 @@ describe("ClaudeOauthAdapter", () => {
 
   it("stays silent when the host has no CLI credential store", async () => {
     const { obs, push } = collect();
+    let reads = 0;
     const adapter = new ClaudeOauthAdapter({
       host: "mac",
       onObservation: push,
-      readCredential: async () => credential({
-        accessToken: null,
-        refreshToken: null,
-        present: false,
-      }),
+      readCredential: async () => {
+        reads += 1;
+        return credential({
+          accessToken: null,
+          refreshToken: null,
+          present: false,
+        });
+      },
       fetchImpl: (async () => new Response("{}", { status: 200 })) as typeof fetch,
     });
     await adapter.tick();
+    await adapter.tick();
     expect(obs).toHaveLength(0);
+    expect(reads).toBe(1);
+  });
+
+  it("reuses a granted credential instead of reopening Keychain every poll", async () => {
+    const { push } = collect();
+    let reads = 0;
+    let fetches = 0;
+    const adapter = new ClaudeOauthAdapter({
+      host: "mac",
+      onObservation: push,
+      readCredential: async () => {
+        reads += 1;
+        return credential();
+      },
+      fetchImpl: (async () => {
+        fetches += 1;
+        return new Response(JSON.stringify(USAGE_BODY), { status: 200 });
+      }) as typeof fetch,
+    });
+    await adapter.tick();
+    await adapter.tick();
+    expect(reads).toBe(1);
+    expect(fetches).toBe(2);
   });
 
   it("retains restored live quota on 429 and honors Retry-After backoff", async () => {

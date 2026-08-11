@@ -26,6 +26,12 @@ node release/install/install.mjs --host-name desk-mac
 
 The installer creates a random pairing token, installs a per-user background collector, preserves compatible existing Claude status-line behavior, creates a commented display-configuration file, and keeps both files across upgrades. Use `--no-start`, `--no-claude-statusline`, `--no-adb`, or `--no-codex-appserver` only when that behavior is intentional.
 
+On macOS, automatic Claude account quotas require access to the existing
+`Claude Code-credentials` Keychain item. Choosing **Always Allow** at the first
+collector request permits unattended refreshes. Choosing **Deny** leaves the
+OAuth lane disabled for that collector run; it will not ask again every polling
+interval. Claude CLI status-line observations remain independent of this access.
+
 When ADB is available, the installer records its absolute executable path so macOS and Windows startup services do not depend on an interactive shell's `PATH`; explicit `--adb-command` and `--adb-serial` selections survive upgrades. The collector atomically mirrors the latest bounded snapshot into the device's loopback-only web root and retries after transient USB failures. After confirming the attached device reports `ID=claudething`, it also repairs a stale device clock from the host before updating the dashboard.
 
 Default token locations:
