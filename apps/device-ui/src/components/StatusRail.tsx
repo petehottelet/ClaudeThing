@@ -1,13 +1,20 @@
-import type { ProviderState, SnapshotTransportStatus } from "@carthing/contracts";
+import {
+  formatClock,
+  type ProviderSnapshot,
+  type ProviderState,
+  type SnapshotTransportStatus,
+} from "@carthing/contracts";
 import type { LinkState } from "../data/useSnapshotSource";
 
 interface StatusRailProps {
-  state: ProviderState | "disconnected";
+  state: RailState;
   detail: string;
   right: string;
   transport?: SnapshotTransportStatus;
   link: LinkState;
 }
+
+export type RailState = ProviderState | "disconnected" | "reconnecting";
 
 const STATE_WORD: Record<string, string> = {
   live: "LIVE",
@@ -16,6 +23,7 @@ const STATE_WORD: Record<string, string> = {
   unavailable: "NO DATA",
   error: "ERROR",
   disconnected: "OFFLINE",
+  reconnecting: "Reconnecting",
 };
 
 const STATE_CLASS: Record<string, string> = {
@@ -25,7 +33,34 @@ const STATE_CLASS: Record<string, string> = {
   unavailable: "state-offline",
   error: "state-error",
   disconnected: "state-offline",
+  reconnecting: "state-reconnecting",
 };
+
+export function railPresentation(state: RailState): {
+  className: string;
+  word: string;
+  refreshing: boolean;
+} {
+  return {
+    className: STATE_CLASS[state] ?? "state-offline",
+    word: STATE_WORD[state] ?? "—",
+    refreshing: state === "reconnecting",
+  };
+}
+
+export function formatReconnectDetail(
+  providers: Array<Pick<ProviderSnapshot, "displayName" | "observedAt">>,
+  timeZone: string,
+): string {
+  if (providers.length === 0) return "Waiting for fresh data";
+  const updates = providers.map((provider) => {
+    if (!provider.observedAt) return `${provider.displayName} never`;
+    const observedAtMs = Date.parse(provider.observedAt);
+    if (!Number.isFinite(observedAtMs)) return `${provider.displayName} unknown`;
+    return `${provider.displayName} ${formatClock(observedAtMs, timeZone)}`;
+  });
+  return `Last data · ${updates.join(" · ")}`;
+}
 
 /**
  * Bottom rail: connection state word + observation age + source.
@@ -40,10 +75,15 @@ export function StatusRail({
 }: StatusRailProps) {
   const sparked = detail.startsWith("✳ ");
   const transport = formatTransportStatus(transportState, link);
+  const presentation = railPresentation(state);
   return (
-    <div className={`rail ${STATE_CLASS[state] ?? "state-offline"}`}>
-      <span className="dot" />
-      <span className="rail-state">{STATE_WORD[state] ?? "—"}</span>
+    <div className={`rail ${presentation.className}`}>
+      {presentation.refreshing ? (
+        <span className="rail-refresh-icon" aria-hidden="true" />
+      ) : (
+        <span className="dot" />
+      )}
+      <span className="rail-state">{presentation.word}</span>
       <span className="rail-detail">
         {sparked && <span className="spark">✳ </span>}
         {sparked ? detail.slice(2) : detail}

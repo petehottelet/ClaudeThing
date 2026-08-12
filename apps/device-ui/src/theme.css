@@ -270,7 +270,7 @@ body {
   padding: 12px 16px 11px;
 }
 .meter.compact .meter-pct {
-  font-size: 37px;
+  font-size: 38px;
 }
 .meter.compact .meter-pct .pct-sign {
   font-size: 24px;
@@ -284,7 +284,7 @@ body {
   margin-top: 9px;
 }
 .meter.compact .meter-reset {
-  font-size: 15px;
+  font-size: 17px;
   margin-top: 7px;
 }
 
@@ -308,7 +308,7 @@ body {
 }
 
 .card-meters.three-limit-layout .meter.compact .meter-pct {
-  font-size: 37px;
+  font-size: 38px;
 }
 
 .card-meters.three-limit-layout .meter.compact .meter-pct .pct-sign {
@@ -326,7 +326,7 @@ body {
 }
 
 .card-meters.three-limit-layout .meter.compact .meter-reset {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.05;
   margin-top: 3px;
 }
@@ -343,7 +343,7 @@ body {
   align-items: center;
   justify-content: space-between;
   color: var(--ink);
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
 }
 
@@ -352,7 +352,7 @@ body {
   padding: 4px 12px;
   background: #174b2b;
   color: #a7efbd;
-  font-size: 14px;
+  font-size: 16px;
   white-space: nowrap;
 }
 
@@ -369,7 +369,7 @@ body {
 
 .usage-fact-label {
   color: var(--ink-3);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.7px;
   text-transform: uppercase;
@@ -379,7 +379,7 @@ body {
 .usage-fact-value {
   margin-top: 1px;
   color: var(--ink);
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -399,12 +399,12 @@ body {
 }
 
 .usage-facts.compact .usage-facts-hdr {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .usage-facts.compact .usage-facts-badge {
   padding: 3px 9px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .usage-facts.compact .usage-facts-grid {
@@ -413,11 +413,11 @@ body {
 }
 
 .usage-facts.compact .usage-fact-label {
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .usage-facts.compact .usage-fact-value {
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .usage-facts.is-degraded {
@@ -574,6 +574,22 @@ body {
 .rail.state-offline .dot { background: var(--ink-3); }
 .rail.state-error .dot { background: var(--error); }
 
+.rail .rail-refresh-icon {
+  width: 13px;
+  height: 13px;
+  margin-right: 10px;
+  border: 2px solid var(--warn);
+  border-left-color: transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  animation: rail-refresh-spin 1s linear infinite;
+}
+
+@keyframes rail-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
 .rail .rail-state {
   letter-spacing: 1.5px;
   margin-right: 10px;
@@ -581,6 +597,7 @@ body {
 
 .rail.state-live .rail-state { color: var(--ink); }
 .rail.state-stale .rail-state { color: var(--warn); }
+.rail.state-reconnecting .rail-state { color: var(--warn); }
 .rail.state-error .rail-state { color: var(--error); }
 
 .rail .rail-detail {
@@ -641,11 +658,11 @@ body {
 }
 
 .detail-meters .meter-pct {
-  font-size: 50px;
+  font-size: 38px;
 }
 
 .detail-meters .meter-pct .pct-sign {
-  font-size: 32px;
+  font-size: 24px;
 }
 
 .detail-meters .bar {
@@ -655,7 +672,7 @@ body {
 }
 
 .detail-meters .meter-reset {
-  font-size: 18px;
+  font-size: 20px;
   margin-top: 7px;
 }
 
@@ -670,11 +687,11 @@ body {
 }
 
 .detail-meters.three-limit-layout .meter-pct {
-  font-size: 34px;
+  font-size: 38px;
 }
 
 .detail-meters.three-limit-layout .meter-pct .pct-sign {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .detail-meters.three-limit-layout .bar {
@@ -683,7 +700,7 @@ body {
 }
 
 .detail-meters.three-limit-layout .meter-reset {
-  font-size: 14px;
+  font-size: 16px;
   margin-top: 4px;
 }
 
@@ -715,7 +732,7 @@ body {
 }
 
 .token-cell .tk-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 1px;
   color: var(--ink-3);
@@ -723,7 +740,7 @@ body {
 }
 
 .token-cell .tk-value {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 800;
   margin-top: 1px;
   font-variant-numeric: tabular-nums;
@@ -986,9 +1003,9 @@ body {
 .sys-row {
   display: flex;
   align-items: center;
-  padding: 6px 4px;
+  padding: 4px;
   border-bottom: 1px solid var(--panel);
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .sys-row .sys-key {
