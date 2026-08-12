@@ -5,7 +5,7 @@ import { useNow } from "./data/useNow";
 import { useSnapshotSource } from "./data/useSnapshotSource";
 import { useHardwareInput } from "./input/useHardwareInput";
 import { cardState } from "./components/Meter";
-import { StatusRail } from "./components/StatusRail";
+import { formatReconnectDetail, StatusRail } from "./components/StatusRail";
 import { Overview } from "./screens/Overview";
 import { detailPageCount, ProviderDetail } from "./screens/ProviderDetail";
 import { SystemStatus } from "./screens/SystemStatus";
@@ -192,10 +192,13 @@ export default function App() {
       : formatClock(now, source.timeZone);
 
     if (!source.snapshot) {
+      const reconnecting = source.pairing === "paired" && source.link === "connecting";
       return {
-        state: "disconnected" as const,
+        state: reconnecting ? ("reconnecting" as const) : ("disconnected" as const),
         detail:
-          source.pairing === "missing"
+          reconnecting
+            ? "Looking for collector"
+            : source.pairing === "missing"
             ? "Pairing required"
             : source.pairing === "rejected"
               ? "Pairing token rejected"
@@ -204,16 +207,10 @@ export default function App() {
       };
     }
 
-    if (source.link === "disconnected" && source.receivedAt) {
-      const providerAges = providers
-        .map((provider) => `${provider.displayName} ${formatAge(provider.observedAt, now)}`)
-        .join("   ·   ");
+    if (source.link !== "connected" && source.receivedAt) {
       return {
-        state: "disconnected" as const,
-        detail:
-          "Link lost · " +
-          (providerAges ||
-            `cache ${formatAge(new Date(source.receivedAt).toISOString(), Date.now())}`),
+        state: "reconnecting" as const,
+        detail: formatReconnectDetail(providers, source.timeZone),
         right,
       };
     }
@@ -282,7 +279,7 @@ export default function App() {
       <ProviderDetail
         provider={provider}
         now={now}
-        linkDown={source.link === "disconnected"}
+        linkDown={source.link !== "connected"}
         windowPage={windowPage}
         timeZone={source.timeZone}
         metrics={metricsForProvider(provider.id)}
@@ -296,7 +293,7 @@ export default function App() {
         providers={providers}
         now={now}
         focusedIndex={focusedIndex}
-        linkDown={source.link === "disconnected"}
+        linkDown={source.link !== "connected"}
         timeZone={source.timeZone}
         providerConfigs={source.dashboardConfig.providers}
         onOpen={(id) => {
@@ -310,7 +307,13 @@ export default function App() {
   return (
     <div className="stage" ref={stageRef}>
       {content}
-      <StatusRail state={rail.state} detail={rail.detail} right={rail.right} />
+      <StatusRail
+        state={rail.state}
+        detail={rail.detail}
+        right={rail.right}
+        transport={source.snapshot?.transport}
+        link={source.link}
+      />
     </div>
   );
 }

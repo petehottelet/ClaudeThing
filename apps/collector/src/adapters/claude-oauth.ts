@@ -5,74 +5,37 @@
  * ~/.claude/.credentials.json elsewhere).
  *
  * Posture:
- * - Read-only with respect to credentials: the token is read, used against
- *   api.anthropic.com only, and never written, logged, or forwarded.
- * - No refresh flow: an expired token surfaces as a CLAUDE_AUTH_EXPIRED
- *   diagnostic and the last-known quota ages honestly. Any CLI use
- *   refreshes the stored credential, which the next poll picks up.
+ * - The access token is used only with Anthropic's usage endpoint.
+ * - Near-expiry credentials are refreshed through Anthropic's OAuth token
+ *   endpoint and written back to the CLI's own credential store without
+ *   putting secret values in arguments or logs.
  * - Absent credentials (CLI never logged in) keep this adapter silent.
  * - The response schema is unofficial; every field is validated and
  *   unrecognized data is ignored, mirroring the other adapters.
  */
 
-import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import {
   normalizeInstant,
   normalizePercent,
   type ProviderSnapshot,
   type QuotaWindow,
 } from "@carthing/contracts";
-import { isObject, pickField, pickNumber } from "../util";
+import { isObject, pickField } from "../util";
+import {
+  CLAUDE_TOKEN_REFRESH_WINDOW_MS,
+  readCliCredential,
+  refreshCliCredential,
+  type CredentialReader,
+  type CredentialRefresher,
+  type OauthCredential,
+} from "./claude-oauth-credential";
+
+export { readCliCredential } from "./claude-oauth-credential";
+export type { CredentialReader, OauthCredential } from "./claude-oauth-credential";
 
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const FIVE_HOUR_SECONDS = 5 * 3600;
 const SEVEN_DAY_SECONDS = 7 * 86400;
-
-export interface OauthCredential {
-  accessToken: string | null;
-  /** Epoch ms when the token expires, when known. */
-  expiresAt: number | null;
-  /** True when a credential store exists at all (even if expired). */
-  present: boolean;
-}
-
-export type CredentialReader = () => Promise<OauthCredential>;
-
-/** Keychain on macOS, credentials file elsewhere. Never throws. */
-export async function readCliCredential(): Promise<OauthCredential> {
-  const absent: OauthCredential = { accessToken: null, expiresAt: null, present: false };
-  let raw: string | null = null;
-  if (process.platform === "darwin") {
-    raw = await new Promise<string | null>((resolve) => {
-      execFile(
-        "security",
-        ["find-generic-password", "-s", "Claude Code-credentials", "-w"],
-        { timeout: 10_000 },
-        (err, stdout) => resolve(err ? null : stdout.trim()),
-      );
-    });
-  }
-  if (raw === null) {
-    try {
-      raw = (await readFile(path.join(os.homedir(), ".claude", ".credentials.json"), "utf8")).trim();
-    } catch {
-      return absent;
-    }
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!isObject(parsed)) return absent;
-    const oauth = isObject(parsed.claudeAiOauth) ? parsed.claudeAiOauth : parsed;
-    const token = typeof oauth.accessToken === "string" && oauth.accessToken ? oauth.accessToken : null;
-    const expiresAt = pickNumber(oauth, ["expiresAt"]);
-    return { accessToken: token, expiresAt, present: true };
-  } catch {
-    return absent;
-  }
-}
 
 function windowFrom(
   raw: unknown,
@@ -146,6 +109,7 @@ export interface ClaudeOauthOptions {
   onObservation: (obs: ProviderSnapshot) => void;
   pollMs?: number;
   readCredential?: CredentialReader;
+  refreshCredential?: CredentialRefresher;
   fetchImpl?: typeof fetch;
   now?: () => number;
   /** True when a last-good OAuth observation was restored from disk. */
@@ -156,6 +120,8 @@ export class ClaudeOauthAdapter {
   private readonly opts: ClaudeOauthOptions;
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  private cachedCredential: OauthCredential | null = null;
+  private credentialAccessUnavailable = false;
   private hasLiveObservation: boolean;
   private transientFailures = 0;
   private backoffUntilMs = 0;
@@ -199,28 +165,74 @@ export class ClaudeOauthAdapter {
   }
 
   async tick(): Promise<boolean> {
-    if (this.running) return false;
+    if (this.running || this.credentialAccessUnavailable) return false;
     const tickNowMs = this.opts.now?.() ?? Date.now();
     if (tickNowMs < this.backoffUntilMs) return false;
     this.running = true;
     try {
       const nowMs = tickNowMs;
       const read = this.opts.readCredential ?? readCliCredential;
-      const cred = await read();
-      if (!cred.present) return false; // No CLI login on this host: stay silent.
-      if (!cred.accessToken || (cred.expiresAt !== null && cred.expiresAt <= nowMs)) {
-        // Expired: say why, but do not overwrite the aging quota headline.
+      let cred: OauthCredential = this.cachedCredential ?? await read();
+      if (!cred.present) {
+        // A missing store and a denied macOS Keychain request are intentionally
+        // indistinguishable here. Do not keep retrying in the background: that
+        // would turn one denied request into a password prompt every poll.
+        this.credentialAccessUnavailable = true;
+        return false;
+      }
+      this.cachedCredential = cred;
+      const needsRefresh = !cred.accessToken || (
+        cred.expiresAt !== null && cred.expiresAt <= nowMs + CLAUDE_TOKEN_REFRESH_WINDOW_MS
+      );
+      const fetchImpl = this.opts.fetchImpl ?? fetch;
+      const refresh = this.opts.refreshCredential ?? refreshCliCredential;
+      if (needsRefresh) {
+        const result = await refresh(cred, fetchImpl, nowMs);
+        if (result.kind === "expired") {
+          // Invalid/expired refresh credentials require an interactive login.
+          this.emit("unavailable", [], null, "CLAUDE_AUTH_EXPIRED");
+          return false;
+        }
+        if (result.kind === "transient") {
+          this.recordTransientFailure(nowMs, result.retryAfter);
+          return false;
+        }
+        cred = result.credential;
+        this.cachedCredential = cred;
+      }
+      if (!cred.accessToken) {
         this.emit("unavailable", [], null, "CLAUDE_AUTH_EXPIRED");
         return false;
       }
-      const fetchImpl = this.opts.fetchImpl ?? fetch;
-      const res = await fetchImpl(USAGE_URL, {
-        headers: {
-          authorization: `Bearer ${cred.accessToken}`,
-          "anthropic-beta": "oauth-2025-04-20",
-        },
-        signal: AbortSignal.timeout(15_000),
-      });
+      const fetchUsage = (accessToken: string): Promise<Response> => fetchImpl(USAGE_URL, {
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+            "anthropic-beta": "oauth-2025-04-20",
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+      let res = await fetchUsage(cred.accessToken);
+      if ((res.status === 401 || res.status === 403) && !needsRefresh) {
+        // An access token can be invalidated before its advertised expiry.
+        // Force one refresh and retry once before requiring a new login.
+        const result = await refresh(cred, fetchImpl, nowMs, true);
+        if (result.kind === "transient") {
+          this.recordTransientFailure(nowMs, result.retryAfter);
+          return false;
+        }
+        if (result.kind === "expired") {
+          this.emit("unavailable", [], null, "CLAUDE_AUTH_EXPIRED");
+          return false;
+        }
+        const rotatedAccessToken = result.credential.accessToken;
+        if (!rotatedAccessToken) {
+          this.emit("unavailable", [], null, "CLAUDE_AUTH_EXPIRED");
+          return false;
+        }
+        cred = result.credential;
+        this.cachedCredential = cred;
+        res = await fetchUsage(rotatedAccessToken);
+      }
       if (res.status === 401 || res.status === 403) {
         this.emit("unavailable", [], null, "CLAUDE_AUTH_EXPIRED");
         return false;

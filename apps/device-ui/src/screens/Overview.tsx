@@ -6,9 +6,8 @@ import type {
 import { deriveState, formatClock } from "@carthing/contracts";
 import {
   cardState,
-  cardWindows,
-  currentPeriodWindow,
   Meter,
+  overviewQuotaWindows,
   placeholderWindows,
   TokenPanel,
   UsageFactsPanel,
@@ -76,12 +75,10 @@ export function Overview({ providers, now, focusedIndex, linkDown, timeZone, pro
               (p.supplementalMetrics?.length ?? 0) > 0 ||
               p.identity != null ||
               p.serviceStatus != null);
-          const windows =
-            p.id === "codex"
-              ? [currentPeriodWindow(p.quotaWindows)]
-              : missing
-                ? placeholderWindows()
-                : cardWindows(p.quotaWindows);
+          const windows = missing
+            ? placeholderWindows()
+            : overviewQuotaWindows(p.id, p.quotaWindows);
+          const threeLimitLayout = quotaVisible && !missing && windows.length === 3;
           const extraWindows = missing || !quotaVisible
             ? 0
             : p.quotaWindows.length - windows.filter((w) => !w.id.startsWith("ph_")).length;
@@ -106,7 +103,7 @@ export function Overview({ providers, now, focusedIndex, linkDown, timeZone, pro
                 )}
                 <StatePill state={shown} />
               </div>
-              <div className="card-meters">
+              <div className={threeLimitLayout ? "card-meters three-limit-layout" : "card-meters"}>
                 {p.id === "codex" ? (
                   <>
                     {quotaVisible && (

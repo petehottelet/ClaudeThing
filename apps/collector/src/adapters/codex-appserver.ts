@@ -190,7 +190,7 @@ export class CodexAppServerAdapter {
       transport.onClose(() => this.handleFailure(generation));
 
       await this.request("initialize", {
-        clientInfo: { name: "carthing-collector", title: "Car Thing Collector", version: "1.0.0" },
+        clientInfo: { name: "carthing-collector", title: "Car Thing Collector", version: "1.1.0" },
       });
       this.sendNotification("initialized", {});
       this.backoffMs = this.opts.backoff?.initialMs ?? 1000;

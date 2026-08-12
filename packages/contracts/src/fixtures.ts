@@ -56,7 +56,7 @@ function hourlySeries(nowMs: number, hoursBack: number, peak: number): UsageHist
 function baseSnapshot(nowMs: number, providers: ProviderSnapshot[]): Snapshot {
   return {
     schemaVersion: SCHEMA_VERSION,
-    collectorVersion: "1.0.0-fixture",
+    collectorVersion: "1.1.0-fixture",
     host: "pc",
     generatedAt: iso(nowMs, 0),
     serverTime: iso(nowMs, 0),

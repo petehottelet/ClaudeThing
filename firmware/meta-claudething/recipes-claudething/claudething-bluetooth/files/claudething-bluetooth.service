@@ -1,0 +1,19 @@
+[Unit]
+Description=ClaudeThing authenticated Bluetooth snapshot receiver
+After=superbird-bluetooth.service bluetooth.service claudething-ui.service
+Wants=bluetooth.service claudething-ui.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/claudething-bluetooth-receiver
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/claudething-ui
+
+[Install]
+WantedBy=multi-user.target

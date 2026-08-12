@@ -250,6 +250,7 @@ async function provisionFirmware(flags) {
 
   const staging = await mkdtemp(path.join(os.tmpdir(), "claudething-provision-"));
   const config = path.join(staging, "runtime-config.js");
+  const tokenSource = path.resolve(tokenFile);
   try {
     await writeFile(
       config,
@@ -257,17 +258,28 @@ async function provisionFirmware(flags) {
       { encoding: "utf8", mode: 0o600 },
     );
     await runAdb(flags, ["push", config, "/tmp/claudething-runtime-config.js.new"]);
+    await runAdb(flags, ["push", tokenSource, "/tmp/claudething-pairing.token.new"]);
     await runAdb(flags, ["shell", "install", "-d", "-m", "0700", "/var/lib/claudething"]);
     await runAdb(flags, [
       "shell", "install", "-m", "0600",
       "/tmp/claudething-runtime-config.js.new",
       "/var/lib/claudething/runtime-config.js",
     ]);
-    await runAdb(flags, ["shell", "rm", "-f", "/tmp/claudething-runtime-config.js.new"]);
+    await runAdb(flags, [
+      "shell", "install", "-m", "0600",
+      "/tmp/claudething-pairing.token.new",
+      "/var/lib/claudething/pairing.token",
+    ]);
+    await runAdb(flags, [
+      "shell", "rm", "-f",
+      "/tmp/claudething-runtime-config.js.new",
+      "/tmp/claudething-pairing.token.new",
+    ]);
     await runAdb(flags, ["shell", "sync"]);
     await runAdb(flags, ["reverse", "tcp:8790", "tcp:8790"]);
     await runAdb(flags, [
-      "shell", "systemctl", "restart", "claudething-ui.service", "chromium-kiosk.service",
+      "shell", "systemctl", "restart",
+      "claudething-ui.service", "chromium-kiosk.service", "claudething-bluetooth.service",
     ]);
     const ready = await runRemoteCheck(flags,
       "attempt=0; stable=0; " +
@@ -290,6 +302,23 @@ async function provisionFirmware(flags) {
   }
 }
 
+async function bluetoothPairing(flags) {
+  await ensureDevice(flags);
+  const identity = await runRemoteCheck(flags, "grep -qx ID=claudething /etc/os-release");
+  if (!flags.has("dry-run") && identity.code !== 0) {
+    throw new Error("The connected device is not running ClaudeThing firmware; Bluetooth pairing is blocked.");
+  }
+  const service = await runRemoteCheck(
+    flags,
+    "systemctl restart claudething-bluetooth-pairing.service && " +
+      "systemctl is-active --quiet claudething-bluetooth-pairing.service",
+  );
+  if (!flags.has("dry-run") && service.code !== 0) {
+    throw new Error("The Bluetooth pairing window could not be started.");
+  }
+  console.log("Bluetooth pairing is open for two minutes. In macOS System Settings > Bluetooth, connect to ClaudeThing Display.");
+}
+
 async function doctor(flags) {
   await ensureDevice(flags);
   const identity = await runRemoteCheck(flags, "grep -qx ID=claudething /etc/os-release");
@@ -300,6 +329,8 @@ async function doctor(flags) {
         ["httpd applet", "/bin/busybox --list | grep -qx httpd"],
         ["display service", "systemctl is-active --quiet superbird-weston.service"],
         ["dashboard service", "systemctl is-active --quiet claudething-ui.service"],
+        ["Bluetooth radio", "systemctl is-active --quiet superbird-bluetooth.service bluetooth.service"],
+        ["Bluetooth snapshot service", "systemctl is-active --quiet claudething-bluetooth.service"],
         ["browser service", "systemctl is-active --quiet chromium-kiosk.service"],
         ["dashboard HTTP", "/bin/busybox wget -q -O - http://127.0.0.1:8080/ 2>/dev/null | grep -q '<title>Usage Dashboard</title>'"],
       ]
@@ -323,12 +354,14 @@ else if (command === "deploy-temporary") await deployTemporary(flags);
 else if (command === "rollback") await rollback(flags);
 else if (command === "tunnel") await tunnel(flags);
 else if (command === "provision-firmware") await provisionFirmware(flags);
+else if (command === "bluetooth-pairing") await bluetoothPairing(flags);
 else {
   console.log(`Usage:
   node device-tool.mjs doctor [--serial ID] [--dry-run]
   node device-tool.mjs backup --output DIR [--serial ID]
   node device-tool.mjs tunnel [--port 8790] [--serial ID]
   node device-tool.mjs provision-firmware --token-file FILE [--endpoints host:port,...] [--time-zone IANA] [--youtube-channel NAME] [--ga4-property NAME] [--serial ID]
+  node device-tool.mjs bluetooth-pairing [--serial ID]
   node device-tool.mjs deploy-temporary --backup-dir DIR --token-file FILE [--ui-dir DIR] [--endpoints host:port,...] [--time-zone IANA] [--youtube-channel NAME] [--ga4-property NAME]
   node device-tool.mjs rollback [--serial ID]
 

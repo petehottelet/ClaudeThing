@@ -11,6 +11,7 @@ await cp(resolve(root, "apps/collector/dist"), resolve(release, "collector"), { 
 await cp(resolve(root, "apps/device-ui/dist"), resolve(release, "device-ui"), { recursive: true });
 await cp(resolve(root, "install"), resolve(release, "install"), { recursive: true });
 await cp(resolve(root, "device"), resolve(release, "device"), { recursive: true });
+await cp(resolve(root, "host"), resolve(release, "host"), { recursive: true });
 await cp(resolve(root, "firmware"), resolve(release, "firmware"), {
   recursive: true,
   filter: (source) => {

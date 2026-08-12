@@ -28,9 +28,27 @@ describe("collector config", () => {
   });
 
   it("allows optional hardware and app-server adapters to be disabled", () => {
-    const config = loadConfig(["--no-adb", "--no-codex-appserver"], {});
+    const config = loadConfig(["--no-adb", "--no-bluetooth", "--no-codex-appserver"], {});
     expect(config.adbEnabled).toBe(false);
+    expect(config.bluetoothEnabled).toBe(false);
     expect(config.codexAppServerEnabled).toBe(false);
+  });
+
+  it("enables the Bluetooth fallback only when a helper is configured", () => {
+    expect(loadConfig([], {}).bluetoothEnabled).toBe(false);
+    const config = loadConfig([
+      "--bluetooth-helper", "/Applications/ClaudeThing/helper",
+      "--bluetooth-address", "00-11-22-33-44-55",
+      "--bluetooth-channel", "22",
+    ], {});
+    expect(config.bluetoothEnabled).toBe(true);
+    expect(config.bluetoothAddress).toBe("00-11-22-33-44-55");
+    expect(config.bluetoothChannel).toBe(22);
+  });
+
+  it("rejects invalid Bluetooth addresses and RFCOMM channels", () => {
+    expect(() => loadConfig(["--bluetooth-address", "not-an-address"], {})).toThrow(/address/);
+    expect(() => loadConfig(["--bluetooth-channel", "31"], {})).toThrow(/channel/);
   });
 
   it("binds mock mode to loopback and production to all interfaces by default", () => {

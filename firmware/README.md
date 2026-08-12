@@ -7,8 +7,8 @@ This directory is the independently authored firmware integration for ClaudeThin
 - `meta-claudething` owns the ClaudeThing distro identity, image composition, dashboard recipe, local HTTP service, browser readiness check, and development tools.
 - The built React bundle is served only on device loopback at `127.0.0.1:8080`.
 - Chromium starts after the local service passes a real HTTP readiness probe.
-- The dashboard reads the collector at device loopback port `8790`. The host collector's existing supervisor maintains the authenticated ADB reverse link over USB.
-- A pairing token is written after installation to `/var/lib/claudething/runtime-config.js`; it is never included in source or in a distributable firmware artifact.
+- The dashboard reads a loopback-only snapshot. The host collector prefers an atomic ADB mirror over USB and can fall back on macOS to an encrypted, authenticated Bluetooth RFCOMM receiver when USB data is unavailable.
+- A pairing token is written after installation to `/var/lib/claudething/runtime-config.js` and root-only `/var/lib/claudething/pairing.token`; it is never included in source or in a distributable firmware artifact.
 - The generic board-support layer supplies the mainline kernel, U-Boot, display stack, input drivers, USB CDC-NCM/ADB gadget, recovery packaging, and A/B partition machinery.
 
 No third-party dashboard code or artifact is used. The contribution rules are in [`docs/INDEPENDENT_IMPLEMENTATION.md`](../docs/INDEPENDENT_IMPLEMENTATION.md).

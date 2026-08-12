@@ -13,6 +13,7 @@ import {
   currentPeriodWindow,
   displayQuotaWindows,
   formatTokens,
+  overviewQuotaWindows,
   padWindows,
   tokenPeriodLabel,
   usageFactsPageCount,
@@ -167,6 +168,29 @@ describe("displayQuotaWindows", () => {
         win({ id: "oauth_weekly_scoped_fable", label: "Fable", usedPercent: 58 }),
       ]).map((window) => window.id),
     ).toEqual(["five_hour", "seven_day", "oauth_weekly_scoped_fable"]);
+  });
+});
+
+describe("overviewQuotaWindows", () => {
+  it("shows all three primary Claude limits in the 50/50 overview", () => {
+    expect(
+      overviewQuotaWindows("claude", [
+        win({ id: "five_hour", label: "Current session", windowSeconds: 18_000 }),
+        win({ id: "seven_day", label: "All models" }),
+        win({ id: "oauth_weekly_scoped_fable", label: "Fable" }),
+      ]).map((window) => window.id),
+    ).toEqual(["five_hour", "seven_day", "oauth_weekly_scoped_fable"]);
+  });
+
+  it("keeps the overview bounded when a provider reports more than three limits", () => {
+    expect(
+      overviewQuotaWindows("claude", [
+        win({ id: "five_hour", label: "Current session", windowSeconds: 18_000 }),
+        win({ id: "seven_day", label: "All models" }),
+        win({ id: "fable", label: "Fable" }),
+        win({ id: "other", label: "Other" }),
+      ]),
+    ).toHaveLength(3);
   });
 });
 

@@ -8,7 +8,13 @@
  * the device UI sees a live-looking stream without real telemetry.
  */
 
-import { SCHEMA_VERSION, type ProviderSnapshot, type Snapshot } from "@carthing/contracts";
+import {
+  SCHEMA_VERSION,
+  type ProviderSnapshot,
+  type Snapshot,
+  type SnapshotTransportKind,
+  type SnapshotTransportStatus,
+} from "@carthing/contracts";
 import { makeFixture } from "@carthing/contracts/fixtures";
 import { COLLECTOR_VERSION, loadConfig, type CollectorConfig } from "./config";
 import { ObservationStore } from "./state";
@@ -31,6 +37,7 @@ import { CodexAppServerAdapter } from "./adapters/codex-appserver";
 import path from "node:path";
 import { readJsonFile, writeJsonAtomic } from "./util";
 import { AdbTunnelSupervisor } from "./adb";
+import { BluetoothSnapshotSupervisor } from "./bluetooth";
 import { DashboardConfigStore } from "./dashboard-config";
 import { OptionalProviderManager } from "./optional-providers";
 
@@ -82,6 +89,7 @@ async function main(): Promise<void> {
   let appServer: CodexAppServerAdapter | null = null;
   let claudeOauth: ClaudeOauthAdapter | null = null;
   let adbTunnel: AdbTunnelSupervisor | null = null;
+  let bluetooth: BluetoothSnapshotSupervisor | null = null;
   let optionalProviders: OptionalProviderManager | null = null;
   const peerIdentityFile = path.join(config.dataDir, "peer-identity.json");
   const claudeStatuslineStateFile = path.join(config.dataDir, "claude-statusline-state.json");
@@ -112,11 +120,39 @@ async function main(): Promise<void> {
     return hosts;
   };
 
-  const getSnapshot = (): Snapshot => ({
+  const transportStatus = (activeOverride?: SnapshotTransportKind): SnapshotTransportStatus => {
+    const usb = adbTunnel?.status() ?? {
+      enabled: config.adbEnabled,
+      connected: false,
+    };
+    const bt = bluetooth?.status() ?? {
+      enabled: config.bluetoothEnabled,
+      connected: false,
+      standbyForUsb: false,
+    };
+    const active =
+      activeOverride ?? (usb.connected ? "usb" : bt.connected ? "bluetooth" : null);
+    return {
+      active,
+      usb: {
+        enabled: usb.enabled,
+        connected: active === "usb" || usb.connected,
+      },
+      bluetooth: {
+        enabled: bt.enabled,
+        connected: active === "bluetooth" || bt.connected,
+        standbyForUsb:
+          active === "bluetooth" ? false : bt.standbyForUsb || (active === "usb" && bt.enabled),
+      },
+    };
+  };
+
+  const getSnapshot = (activeTransport?: SnapshotTransportKind): Snapshot => ({
     ...(config.mock !== null
       ? makeFixture(config.mock, Date.now())
       : store.assembleSnapshot({ expectedHosts: expectedHosts() })),
     dashboardConfig: dashboardConfigStore.current(),
+    transport: transportStatus(activeTransport),
   });
 
   const getHealth = (): unknown => {
@@ -143,6 +179,13 @@ async function main(): Promise<void> {
       }),
       peer: peerSync ? peerSync.status() : null,
       adb: adbTunnel ? adbTunnel.status() : { enabled: false },
+      bluetooth: bluetooth ? bluetooth.status() : { enabled: false },
+      stream: {
+        clients: server.clientCount(),
+        lastClientActivityAt: server.lastClientActivityAt() === null
+          ? null
+          : new Date(server.lastClientActivityAt()!).toISOString(),
+      },
       configurationWarnings: [
         ...(config.tokenSource === "flag" ? ["TOKEN_ON_COMMAND_LINE"] : []),
         ...(config.peerUrl && !rememberedPeerHost ? ["PEER_HOST_NOT_PINNED"] : []),
@@ -263,8 +306,20 @@ async function main(): Promise<void> {
       command: config.adbCommand,
       serial: config.adbSerial,
       port: config.port,
+      intervalMs: 15_000,
+      snapshot: () => getSnapshot("usb"),
+      lastClientActivityAt: () => server.lastClientActivityAt(),
     });
-    adbTunnel.start();
+    bluetooth = new BluetoothSnapshotSupervisor({
+      enabled: config.bluetoothEnabled,
+      helperCommand: config.bluetoothHelper,
+      address: config.bluetoothAddress,
+      channel: config.bluetoothChannel,
+      intervalMs: 15_000,
+      token,
+      snapshot: () => getSnapshot("bluetooth"),
+      usbConnected: () => adbTunnel?.status().connected ?? false,
+    });
 
     if (config.peerUrl) {
       peerSync = new PeerSync({
@@ -282,6 +337,10 @@ async function main(): Promise<void> {
   }
 
   const port = await server.listen(config.port, config.bindHost);
+  // The host endpoint must be listening before the first reverse mapping is
+  // configured; otherwise the kiosk can race into a connection-refused loop.
+  adbTunnel?.start();
+  bluetooth?.start();
   console.log(
     `[collector] v${COLLECTOR_VERSION} listening on port ${port} as host "${config.hostName}"` +
       (config.mock !== null ? ` (mock fixture: ${config.mock}, refresh ${MOCK_REFRESH_MS / 1000}s)` : ""),
@@ -297,6 +356,7 @@ async function main(): Promise<void> {
     appServer?.stop();
     claudeOauth?.stop();
     adbTunnel?.stop();
+    bluetooth?.stop();
     optionalProviders?.stop();
     void server.close().then(() => process.exit(0));
     setTimeout(() => process.exit(0), 2000).unref();

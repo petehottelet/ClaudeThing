@@ -20,7 +20,11 @@
  *   --codex-command <cmd> codex app-server launch command (default "codex app-server")
  *   --adb-command <path>  ADB executable (default "adb")
  *   --adb-serial <id>     target a specific ADB device
- *   --no-adb              disable automatic ADB reverse-tunnel recovery
+ *   --no-adb              disable automatic ADB snapshot mirroring/recovery
+ *   --bluetooth-helper <path> macOS RFCOMM sender executable
+ *   --bluetooth-address <addr> optional paired display Bluetooth address
+ *   --bluetooth-channel <n> RFCOMM channel (default 22)
+ *   --no-bluetooth        disable automatic Bluetooth fallback
  *   --no-codex-appserver  use rollout logs only; quota windows unavailable
  *   --no-claude-oauth     disable the continuous Claude quota poller
  */
@@ -30,7 +34,7 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import { FIXTURE_NAMES, type FixtureName } from "@carthing/contracts/fixtures";
 
-export const COLLECTOR_VERSION = "1.0.0";
+export const COLLECTOR_VERSION = "1.1.0";
 
 export interface CollectorConfig {
   port: number;
@@ -45,6 +49,10 @@ export interface CollectorConfig {
   adbEnabled: boolean;
   adbCommand: string;
   adbSerial: string | null;
+  bluetoothEnabled: boolean;
+  bluetoothHelper: string | null;
+  bluetoothAddress: string | null;
+  bluetoothChannel: number;
   codexAppServerEnabled: boolean;
   claudeOauthEnabled: boolean;
   mock: FixtureName | null;
@@ -157,6 +165,16 @@ export function loadConfig(
     flags.get("dashboard-config") ||
     env.CARTHING_DASHBOARD_CONFIG ||
     path.join(dataDir, "dashboard-config.jsonc");
+  const bluetoothHelper = flags.get("bluetooth-helper") || env.CLAUDETHING_BLUETOOTH_HELPER || null;
+  const bluetoothAddress = flags.get("bluetooth-address") || env.CLAUDETHING_BLUETOOTH_ADDRESS || null;
+  if (bluetoothAddress && !/^[0-9A-Fa-f]{2}(?::|-)[0-9A-Fa-f]{2}(?:(?::|-)[0-9A-Fa-f]{2}){4}$/.test(bluetoothAddress)) {
+    throw new Error("Invalid --bluetooth-address; expected six hexadecimal octets.");
+  }
+  const bluetoothChannelRaw = flags.get("bluetooth-channel") ?? env.CLAUDETHING_BLUETOOTH_CHANNEL;
+  const bluetoothChannel = bluetoothChannelRaw ? Number(bluetoothChannelRaw) : 22;
+  if (!Number.isInteger(bluetoothChannel) || bluetoothChannel < 1 || bluetoothChannel > 30) {
+    throw new Error("Invalid --bluetooth-channel; expected 1..30.");
+  }
 
   return {
     port,
@@ -171,6 +189,11 @@ export function loadConfig(
     adbEnabled: !flags.has("no-adb") && env.CARTHING_ADB_ENABLED !== "0",
     adbCommand: flags.get("adb-command") || env.CARTHING_ADB || "adb",
     adbSerial: flags.get("adb-serial") || env.CARTHING_ADB_SERIAL || null,
+    bluetoothEnabled:
+      !flags.has("no-bluetooth") && env.CLAUDETHING_BLUETOOTH_ENABLED !== "0" && bluetoothHelper !== null,
+    bluetoothHelper,
+    bluetoothAddress,
+    bluetoothChannel,
     codexAppServerEnabled:
       !flags.has("no-codex-appserver") && env.CARTHING_CODEX_APPSERVER_ENABLED !== "0",
     claudeOauthEnabled:

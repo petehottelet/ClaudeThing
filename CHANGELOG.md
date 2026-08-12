@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0 — 2026-08-11
+
+ClaudeThing.ai 1.1 makes the dashboard more reliable as an unattended desk display and introduces the project's first source-linked, ready-to-flash firmware release.
+
+### Highlights
+
+- Automatic Claude OAuth refresh with retained last-valid quota data and rate-limit-aware polling.
+- More resilient USB snapshot mirroring and tunnel recovery after sleep, reconnects, and unreliable hub behavior.
+- An authenticated Bluetooth fallback that automatically stands by while USB is healthy and resumes bounded snapshot delivery when USB data is unavailable.
+- Visible USB/Bluetooth transport state plus an honest animated reconnecting status with exact last-observation times.
+- All three available Claude limits in the split overview, clearer Codex account facts, and larger usage and reset typography throughout the 800×480 interface.
+- Cleaner persistent boot presentation and refreshed documentation screenshots matching the shipped UI.
+- A verified FlashThing-compatible firmware archive, SHA-256 checksum, build metadata, and complete generated license archive attached to the GitHub release.
+
+### Install
+
+Download the firmware and checksum from the [v1.1.0 release](https://github.com/petehottelet/ClaudeThing/releases/tag/v1.1.0), then follow the [installation and recovery guide](INSTALL.md). The release archive is built from the tagged public source; credentials and pairing material are provisioned locally after flashing and are not included in the image.
+
 ## 1.0.0 — 2026-08-10
 
 ClaudeThing.ai 1.0 is the first public source release of the independent, MIT-licensed dashboard firmware project for Spotify Car Thing.

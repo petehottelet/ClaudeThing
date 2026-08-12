@@ -8,6 +8,9 @@ The collector is a local companion service, not an internet service. Bind access
 
 - Production tokens must be 32-256 base64url characters. The installer generates 32 random bytes.
 - HTTP endpoints require `Authorization: Bearer`. Query-string tokens are rejected.
+- The sole unauthenticated route is a loopback-only, bodyless transport probe used to verify an existing ADB reverse mapping without disrupting the dashboard stream. It exposes no telemetry or configuration.
+- The USB supervisor writes a bounded, credential-free snapshot to a fixed file in the device's volatile loopback web root using an identity-checked, atomic temporary-file rename. A failed ADB attempt leaves the last complete snapshot intact and is retried later.
+- The macOS Bluetooth fallback uses an encrypted, bonded RFCOMM link plus an application HMAC-SHA256 over a versioned length/sequence envelope. The device accepts at most one MiB, rejects unauthenticated and replayed frames, performs a minimal JSON-envelope check, and uses the same atomic final-file promotion as USB. Bluetooth pairing is discoverable for two minutes only when explicitly started over an already trusted USB session.
 - WebSocket authentication uses a dedicated subprotocol header; the server echoes only `carthing.v1`, not the secret.
 - Pairing material is accepted through a one-time URL fragment, persisted in device local storage, and immediately scrubbed from browser history/address state.
 - CORS is an exact allowlist. Security headers include `no-store`, `no-referrer`, `nosniff`, and a restrictive UI Content Security Policy.
@@ -15,12 +18,13 @@ The collector is a local companion service, not an internet service. Bind access
 - Status-line forwarding sends only an allowlist of model/rate-limit/context/cost fields. Paths, prompts, transcript identifiers, and workspace data are discarded before network transmission.
 - Local JSONL readers emit aggregate numbers only. Raw prompts and records are never served.
 - The Codex process is launched directly from a quoted argument vector, without a command shell.
+- Claude OAuth renewal uses Anthropic's token endpoint and the public client identity used by the installed CLI. Rotated credentials are written back to the CLI's existing macOS Keychain item through child-process stdin, never command arguments or logs; the non-macOS credential-file fallback is replaced atomically with owner-only permissions. The collector caches a granted credential and suppresses background retries after denied or unavailable Keychain access, preventing recurring password prompts. No model prompt is sent to keep the dashboard current.
 - Pairing tokens are file-backed, retained across upgrades, and protected with per-user permissions where the platform supports it.
 - Device deployment requires a nonempty hashed stock-webapp backup marker and uses a fixed reboot-volatile staging/mount path.
 
 ## Deliberate tradeoffs
 
-- Local HTTP is used for USB and private-LAN compatibility with the legacy Car Thing webview. The bearer token prevents unauthenticated reads but does not encrypt trusted-LAN traffic. Use USB, an isolated VLAN, or a local HTTPS reverse proxy where traffic confidentiality matters.
+- Local HTTP is used for USB and private-LAN compatibility with the device browser. The bearer token prevents unauthenticated reads but does not encrypt trusted-LAN traffic. The Bluetooth snapshot fallback does not expose that HTTP service over Bluetooth. Use USB, paired Bluetooth, an isolated VLAN, or a local HTTPS reverse proxy where traffic confidentiality matters.
 - The token provisioned into the device UI is readable to someone with filesystem access to the already-compromised/customized device. Provider account credentials and API keys are never stored on the device.
 - Claude and Codex telemetry is operational rather than billing-grade. It may be absent or stale; the UI labels those conditions instead of substituting values.
 - Existing command-based Claude status lines are chained through the same shell semantics Claude Code already used. Their output is bounded; their command remains user-controlled local configuration.

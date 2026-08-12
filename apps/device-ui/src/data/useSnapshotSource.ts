@@ -149,6 +149,15 @@ function readParams(): { mock: FixtureName | null; endpoints: string[]; token: s
 
 const POLL_MS = 15_000;
 const HEARTBEAT_TIMEOUT_MS = 45_000;
+const MIRROR_ENDPOINT = "usb-mirror";
+const MIRROR_MAX_AGE_MS = 90_000;
+
+/** A pushed snapshot must keep advancing; an old local file is an offline
+ * cache, not evidence that the host is still attached. */
+export function isFreshMirror(snapshot: Snapshot, nowMs: number): boolean {
+  const serverMs = Date.parse(snapshot.serverTime);
+  return Number.isFinite(serverMs) && Math.abs(nowMs - serverMs) <= MIRROR_MAX_AGE_MS;
+}
 
 export function useSnapshotSource(): SnapshotSource {
   const params = useMemo(readParams, []);
@@ -227,6 +236,7 @@ export function useSnapshotSource(): SnapshotSource {
     let pollId = 0;
     let probeId = 0;
     let probing = false;
+    const mirrorEnabled = window.location.hostname === "127.0.0.1" && window.location.port === "8080";
 
     // A hung request must fail fast instead of wedging the bootstrap: the
     // USB tunnel can silently eat a connection, and a browser fetch has no
@@ -243,6 +253,22 @@ export function useSnapshotSource(): SnapshotSource {
         });
       } finally {
         window.clearTimeout(timer);
+      }
+    };
+
+    const fetchMirror = async (): Promise<boolean> => {
+      if (!mirrorEnabled) return false;
+      try {
+        const res = await fetch("/snapshot.json", { cache: "no-store" });
+        if (!res.ok) return false;
+        const body: unknown = await res.json();
+        if (!isSnapshot(body) || !isFreshMirror(body, Date.now())) return false;
+        if (disposed) return false;
+        accept(body, MIRROR_ENDPOINT);
+        setPairing("paired");
+        return true;
+      } catch {
+        return false;
       }
     };
 
@@ -270,7 +296,9 @@ export function useSnapshotSource(): SnapshotSource {
           }
         }
         if (!disposed) {
-          setLink("disconnected");
+          if (Date.now() - lastMessageAt.current > HEARTBEAT_TIMEOUT_MS) {
+            setLink("disconnected");
+          }
           probeId = window.setTimeout(probe, 8000);
         }
       } finally {
@@ -311,9 +339,10 @@ export function useSnapshotSource(): SnapshotSource {
     pollId = window.setInterval(async () => {
       if (disposed) return;
       const silentFor = Date.now() - lastMessageAt.current;
-      if (silentFor < POLL_MS) return;
       const endpoint = activeEndpointRef.current;
-      if (endpoint && !endpoint.startsWith("mock:")) {
+      if (endpoint !== MIRROR_ENDPOINT && silentFor < POLL_MS) return;
+      if (await fetchMirror()) return;
+      if (endpoint && endpoint !== MIRROR_ENDPOINT && !endpoint.startsWith("mock:")) {
         try {
           const res = await fetchSnapshot(endpoint);
           if (res.ok) {
@@ -326,7 +355,7 @@ export function useSnapshotSource(): SnapshotSource {
         } catch {
           /* fall through to disconnect check */
         }
-      } else if (!endpoint && !probing) {
+      } else if ((!endpoint || endpoint === MIRROR_ENDPOINT) && !probing) {
         // Never connected this session (a wedged or unlucky first probe):
         // keep kicking the bootstrap until an endpoint answers.
         void probe();
@@ -334,7 +363,13 @@ export function useSnapshotSource(): SnapshotSource {
       if (silentFor > HEARTBEAT_TIMEOUT_MS) setLink("disconnected");
     }, POLL_MS);
 
-    probe();
+    if (mirrorEnabled) {
+      void fetchMirror().then((mirrored) => {
+        if (!mirrored) void probe();
+      });
+    } else {
+      void probe();
+    }
 
     return () => {
       disposed = true;

@@ -1,6 +1,7 @@
 import type { Snapshot } from "@carthing/contracts";
 import { formatAge } from "@carthing/contracts";
 import type { LinkState, PairingState } from "../data/useSnapshotSource";
+import { formatTransportStatus } from "../components/StatusRail";
 
 interface SystemStatusProps {
   snapshot: Snapshot | null;
@@ -47,6 +48,12 @@ export function SystemStatus({
           <span className="sys-val">
             {mockName ? `mock fixture: ${mockName}` : link}
             {activeEndpoint ? ` · ${activeEndpoint}` : ""}
+          </span>
+        </div>
+        <div className="sys-row">
+          <span className="sys-key">Transport</span>
+          <span className="sys-val">
+            {formatTransportStatus(snapshot?.transport, link) ?? "not reported"}
           </span>
         </div>
         <div className="sys-row">
