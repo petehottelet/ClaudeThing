@@ -20,6 +20,14 @@ The packaged host payload is written to `release/`.
 
 ## 2. Install the collector
 
+For the published prebuilt host package:
+
+```sh
+npx claudething@latest install --host-name desk-mac
+```
+
+The npm command installs host-side software only and never flashes firmware. When working from a verified source checkout, the equivalent command is:
+
 ```sh
 node release/install/install.mjs --host-name desk-mac
 ```

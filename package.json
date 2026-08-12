@@ -1,8 +1,45 @@
 {
-  "name": "carthing-usage-dashboard",
-  "private": true,
+  "name": "claudething",
   "version": "1.1.0",
+  "description": "Local-first host collector and installer for the ClaudeThing.ai Spotify Car Thing dashboard.",
   "license": "MIT",
+  "author": "Pete Hottelet",
+  "homepage": "https://github.com/petehottelet/ClaudeThing#readme",
+  "bugs": {
+    "url": "https://github.com/petehottelet/ClaudeThing/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/petehottelet/ClaudeThing.git"
+  },
+  "keywords": [
+    "spotify-car-thing",
+    "car-thing",
+    "dashboard",
+    "claude",
+    "claude-code",
+    "codex",
+    "ai-usage",
+    "analytics",
+    "local-first",
+    "collector"
+  ],
+  "bin": {
+    "claudething": "bin/claudething.mjs"
+  },
+  "files": [
+    "bin/claudething.mjs",
+    "release/collector",
+    "release/device-ui",
+    "release/install",
+    "release/device",
+    "INSTALL.md",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20.19"
   },
@@ -21,8 +58,10 @@
     "firmware:assets": "node firmware/scripts/generate-splash.mjs",
     "firmware:build": "node firmware/scripts/build.mjs",
     "firmware:verify": "node firmware/scripts/verify.mjs",
-    "verify": "node tools/provider-catalog.mjs && npm run typecheck && npm test && npm run package && npm run verify:release && npm run firmware:verify",
+    "verify": "node tools/provider-catalog.mjs && npm run typecheck && npm test && npm run package && npm run verify:release && npm run verify:npm && npm run firmware:verify",
     "verify:release": "node tools/install-smoke.mjs && node tools/e2e-shot.mjs .audit-e2e && node tools/e2e-firmware-topology.mjs",
+    "verify:npm": "node tools/npm-package-smoke.mjs",
+    "prepack": "npm run package",
     "install:local": "node install/install.mjs",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"

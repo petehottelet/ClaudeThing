@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/petehottelet/ClaudeThing/actions/workflows/ci.yml"><img src="https://github.com/petehottelet/ClaudeThing/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status" /></a>
+  <a href="https://www.npmjs.com/package/claudething"><img src="https://img.shields.io/npm/v/claudething?color=d97757&logo=npm" alt="ClaudeThing npm package" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3f9e63" alt="MIT license" /></a>
   <a href="package.json"><img src="https://img.shields.io/badge/Node.js-%E2%89%A520.19-5fa04e?logo=nodedotjs&logoColor=white" alt="Node.js 20.19 or newer" /></a>
   <img src="https://img.shields.io/badge/status-hardware%20validated-d97757" alt="hardware validated" />
@@ -57,6 +58,14 @@ The easiest route is to point your coding agent at [this repository](https://git
 > Install ClaudeThing.ai on my USB-connected Spotify Car Thing. Follow `INSTALL.md` and the repository safety rules, verify the host and device at each stage, preserve a complete factory backup, and stop before flashing until I explicitly approve the exact artifact, byte size, and SHA-256.
 
 The repository gives the agent concrete checks and safety stops for each stage. It can inspect compatibility, install the host collector, build and verify firmware, configure the dashboard, qualify the USB connection, and provision the device after an approved flash. Prefer doing it yourself? The same complete path is in [INSTALL.md](INSTALL.md).
+
+Already running ClaudeThing firmware? Install or upgrade the prebuilt host collector from npm:
+
+```sh
+npx claudething@latest install
+```
+
+This command configures the local collector and startup service; it never flashes the device. Firmware images remain deliberately separate under [GitHub Releases](https://github.com/petehottelet/ClaudeThing/releases).
 
 ## See it in action
 
