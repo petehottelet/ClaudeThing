@@ -3,7 +3,7 @@
  * Usage: node tools/e2e-shot.mjs <outDir> [uiBase]
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
 
@@ -11,6 +11,7 @@ const outDir = process.argv[2] ?? "shots";
 const PORT = Number(process.env.CARTHING_E2E_PORT ?? 18_000 + (process.pid % 10_000));
 const TOKEN = "e2e_token_123456789012345678901234567890123456";
 const uiBase = process.argv[3] ?? `http://127.0.0.1:${PORT}`;
+const expectedVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
 mkdirSync(outDir, { recursive: true });
 const tokenFile = join(outDir, ".e2e-token");
 writeFileSync(tokenFile, `${TOKEN}\n`, { encoding: "utf8", mode: 0o600 });
@@ -28,16 +29,26 @@ const collector = spawn(
 );
 
 async function waitForHealth() {
+  let lastError = null;
   for (let index = 0; index < 40; index++) {
     try {
       const response = await fetch(`http://127.0.0.1:${PORT}/v1/health`, {
         headers: { authorization: `Bearer ${TOKEN}` },
       });
-      if (response.ok) return;
-    } catch {
-      // Collector is still starting.
+      if (response.ok) {
+        const health = await response.json();
+        if (health.collectorVersion !== expectedVersion) {
+          throw new Error(`collector reported ${health.collectorVersion}, expected ${expectedVersion}`);
+        }
+        return;
+      }
+    } catch (error) {
+      lastError = error;
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  if (lastError instanceof Error && lastError.message.startsWith("collector reported")) {
+    throw lastError;
   }
   throw new Error("collector did not become healthy");
 }

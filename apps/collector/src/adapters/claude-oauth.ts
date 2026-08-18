@@ -112,6 +112,8 @@ export interface ClaudeOauthOptions {
   refreshCredential?: CredentialRefresher;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  /** Optional owner-only cache used to avoid interactive Keychain reads in a LaunchAgent. */
+  credentialFile?: string | null;
   /** True when a last-good OAuth observation was restored from disk. */
   hasInitialObservation?: boolean;
 }
@@ -171,7 +173,11 @@ export class ClaudeOauthAdapter {
     this.running = true;
     try {
       const nowMs = tickNowMs;
-      const read = this.opts.readCredential ?? readCliCredential;
+      const read = this.opts.readCredential ?? (
+        this.opts.credentialFile
+          ? () => readCliCredential(this.opts.credentialFile)
+          : readCliCredential
+      );
       let cred: OauthCredential = this.cachedCredential ?? await read();
       if (!cred.present) {
         // A missing store and a denied macOS Keychain request are intentionally
@@ -185,7 +191,12 @@ export class ClaudeOauthAdapter {
         cred.expiresAt !== null && cred.expiresAt <= nowMs + CLAUDE_TOKEN_REFRESH_WINDOW_MS
       );
       const fetchImpl = this.opts.fetchImpl ?? fetch;
-      const refresh = this.opts.refreshCredential ?? refreshCliCredential;
+      const refresh = this.opts.refreshCredential ?? (
+        this.opts.credentialFile
+          ? (credential, fetcher, timestamp, force) =>
+              refreshCliCredential(credential, fetcher, timestamp, force, this.opts.credentialFile)
+          : refreshCliCredential
+      );
       if (needsRefresh) {
         const result = await refresh(cred, fetchImpl, nowMs);
         if (result.kind === "expired") {
