@@ -279,6 +279,7 @@ async function main(): Promise<void> {
     if (config.claudeOauthEnabled) {
       claudeOauth = new ClaudeOauthAdapter({
         host: config.hostName,
+        credentialFile: config.claudeCredentialFile,
         hasInitialObservation: restoredClaudeOauth !== null,
         onObservation: (obs) => {
           store.upsertLocal(obs);

@@ -13,6 +13,7 @@ function usage() {
 
 Usage:
   claudething install [options]     Install or upgrade the host collector
+  claudething authorize-claude      Authorize unattended Claude updates on macOS
   claudething uninstall [options]   Remove the host collector
   claudething doctor [options]      Check a USB-connected ClaudeThing display
   claudething version               Print the installed package version
@@ -57,6 +58,9 @@ switch (command) {
   }
   case "install":
     await runNode(resolve(packageRoot, "release/install/install.mjs"), args);
+    break;
+  case "authorize-claude":
+    await runNode(resolve(packageRoot, "release/install/authorize-claude.mjs"), args);
     break;
   case "uninstall":
     await runNode(resolve(packageRoot, "release/install/uninstall.mjs"), args);

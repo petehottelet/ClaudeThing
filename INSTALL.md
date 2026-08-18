@@ -23,6 +23,7 @@ The packaged host payload is written to `release/`.
 For the published prebuilt host package:
 
 ```sh
+npx claudething@latest authorize-claude # macOS only; one Keychain approval
 npx claudething@latest install --host-name desk-mac
 ```
 
@@ -34,11 +35,13 @@ node release/install/install.mjs --host-name desk-mac
 
 The installer creates a random pairing token, installs a per-user background collector, preserves compatible existing Claude status-line behavior, creates a commented display-configuration file, and keeps both files across upgrades. A package built on macOS also installs a universal native Bluetooth sender. Use `--no-start`, `--no-claude-statusline`, `--no-adb`, `--no-bluetooth`, or `--no-codex-appserver` only when that behavior is intentional.
 
-On macOS, automatic Claude account quotas require access to the existing
-`Claude Code-credentials` Keychain item. Choosing **Always Allow** at the first
-collector request permits unattended refreshes. Choosing **Deny** leaves the
-OAuth lane disabled for that collector run; it will not ask again every polling
-interval. Claude CLI status-line observations remain independent of this access.
+On macOS, `claudething authorize-claude` performs one foreground read of the
+existing `Claude Code-credentials` Keychain item and writes an owner-only cache
+inside the collector's application-support directory. The background service
+uses that cache, avoiding Keychain prompts at login or service restart. Run the
+authorization command again after changing Claude accounts. Choosing **Deny**
+leaves the prior cache untouched. Claude CLI status-line observations remain
+independent of this access. Use `--no-claude-oauth` to disable the lane entirely.
 
 When ADB is available, the installer records its absolute executable path so macOS and Windows startup services do not depend on an interactive shell's `PATH`; explicit `--adb-command` and `--adb-serial` selections survive upgrades. The collector atomically mirrors the latest bounded snapshot into the device's loopback-only web root and retries after transient USB failures. After confirming the attached device reports `ID=claudething`, it also repairs a stale device clock from the host before updating the dashboard.
 

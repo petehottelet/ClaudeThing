@@ -27,6 +27,7 @@
  *   --no-bluetooth        disable automatic Bluetooth fallback
  *   --no-codex-appserver  use rollout logs only; quota windows unavailable
  *   --no-claude-oauth     disable the continuous Claude quota poller
+ *   --claude-credential-file <path> owner-only Claude OAuth credential cache
  */
 
 import os from "node:os";
@@ -34,7 +35,7 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import { FIXTURE_NAMES, type FixtureName } from "@carthing/contracts/fixtures";
 
-export const COLLECTOR_VERSION = "1.1.0";
+export const COLLECTOR_VERSION = "1.1.1";
 
 export interface CollectorConfig {
   port: number;
@@ -55,6 +56,7 @@ export interface CollectorConfig {
   bluetoothChannel: number;
   codexAppServerEnabled: boolean;
   claudeOauthEnabled: boolean;
+  claudeCredentialFile: string | null;
   mock: FixtureName | null;
   claudeDir: string;
   codexDir: string;
@@ -198,6 +200,8 @@ export function loadConfig(
       !flags.has("no-codex-appserver") && env.CARTHING_CODEX_APPSERVER_ENABLED !== "0",
     claudeOauthEnabled:
       !flags.has("no-claude-oauth") && env.CARTHING_CLAUDE_OAUTH_ENABLED !== "0",
+    claudeCredentialFile:
+      flags.get("claude-credential-file") || env.CLAUDETHING_CLAUDE_CREDENTIAL_FILE || null,
     mock: mockRaw as FixtureName | null,
     claudeDir: flags.get("claude-dir") || path.join(home, ".claude", "projects"),
     codexDir: flags.get("codex-dir") || path.join(home, ".codex", "sessions"),

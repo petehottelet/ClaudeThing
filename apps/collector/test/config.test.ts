@@ -28,10 +28,16 @@ describe("collector config", () => {
   });
 
   it("allows optional hardware and app-server adapters to be disabled", () => {
-    const config = loadConfig(["--no-adb", "--no-bluetooth", "--no-codex-appserver"], {});
+    const config = loadConfig(["--no-adb", "--no-bluetooth", "--no-codex-appserver", "--no-claude-oauth"], {});
     expect(config.adbEnabled).toBe(false);
     expect(config.bluetoothEnabled).toBe(false);
     expect(config.codexAppServerEnabled).toBe(false);
+    expect(config.claudeOauthEnabled).toBe(false);
+  });
+
+  it("accepts an explicit owner-controlled Claude credential cache", () => {
+    const config = loadConfig(["--claude-credential-file", "/tmp/claude-credential.json"], {});
+    expect(config.claudeCredentialFile).toBe("/tmp/claude-credential.json");
   });
 
   it("enables the Bluetooth fallback only when a helper is configured", () => {

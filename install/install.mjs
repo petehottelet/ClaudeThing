@@ -88,6 +88,8 @@ const allowedFlags = new Set([
   "bluetooth-helper",
   "bluetooth-address",
   "no-codex-appserver",
+  "no-claude-oauth",
+  "claude-credential-file",
   "codex-command",
   "dashboard-config",
 ]);
@@ -107,6 +109,9 @@ if (args.has("help")) {
   --bluetooth-helper FILE      custom macOS RFCOMM sender executable
   --bluetooth-address ADDRESS  select one paired ClaudeThing display
   --no-codex-appserver         disable Codex quota-window collection
+  --no-claude-oauth            disable automatic Claude quota collection
+  --claude-credential-file FILE owner-only Claude credential cache created by
+                               \`claudething authorize-claude\` on macOS
   --codex-command COMMAND      override the Codex app-server command
                                (macOS auto-detects ChatGPT's bundled binary)
   --dashboard-config FILE      human-editable JSONC display preferences
@@ -187,6 +192,47 @@ try {
   if (parsed?.product === "carthing-usage-dashboard" && parsed.version === 1) previousInstallManifest = parsed;
 } catch {
   // First install or an invalid legacy manifest that should not influence it.
+}
+const defaultClaudeCredentialFile = join(installRoot, "claude-credentials.json");
+let claudeCredentialFile = args.get("claude-credential-file")
+  ?? (typeof previousInstallManifest.claudeCredentialFile === "string"
+    ? previousInstallManifest.claudeCredentialFile
+    : null);
+if (!claudeCredentialFile) {
+  try {
+    if ((await stat(defaultClaudeCredentialFile)).isFile()) {
+      claudeCredentialFile = defaultClaudeCredentialFile;
+    }
+  } catch {
+    // The explicit authorization step has not been run yet.
+  }
+}
+if (claudeCredentialFile) {
+  claudeCredentialFile = resolve(claudeCredentialFile);
+  let credentialStat;
+  try {
+    credentialStat = await stat(claudeCredentialFile);
+  } catch {
+    throw new Error(`Claude credential cache is not readable: ${claudeCredentialFile}`);
+  }
+  if (!credentialStat.isFile()) throw new Error(`Claude credential cache is not a file: ${claudeCredentialFile}`);
+  if (system !== "win32" && (credentialStat.mode & 0o077) !== 0) {
+    throw new Error(`Claude credential cache must be owner-only (mode 0600): ${claudeCredentialFile}`);
+  }
+  let credentialDocument;
+  try {
+    credentialDocument = JSON.parse(await readFile(claudeCredentialFile, "utf8"));
+  } catch {
+    throw new Error(`Claude credential cache is not valid JSON: ${claudeCredentialFile}`);
+  }
+  const credentialOauth = credentialDocument && typeof credentialDocument === "object" && !Array.isArray(credentialDocument)
+    ? (credentialDocument.claudeAiOauth && typeof credentialDocument.claudeAiOauth === "object"
+      ? credentialDocument.claudeAiOauth
+      : credentialDocument)
+    : null;
+  if (!credentialOauth || typeof credentialOauth.refreshToken !== "string" || credentialOauth.refreshToken.length < 16) {
+    throw new Error(`Claude credential cache does not contain a reusable OAuth login: ${claudeCredentialFile}`);
+  }
 }
 const pairingTokenFile = args.get("pairing-token-file")
   ? resolve(args.get("pairing-token-file"))
@@ -342,6 +388,8 @@ if (args.has("no-bluetooth")) collectorArgs.push("--no-bluetooth");
 else if (bluetoothHelper) collectorArgs.push("--bluetooth-helper", bluetoothHelper);
 if (bluetoothAddress) collectorArgs.push("--bluetooth-address", bluetoothAddress);
 if (args.has("no-codex-appserver")) collectorArgs.push("--no-codex-appserver");
+if (args.has("no-claude-oauth")) collectorArgs.push("--no-claude-oauth");
+else if (claudeCredentialFile) collectorArgs.push("--claude-credential-file", claudeCredentialFile);
 let codexCommand = args.get("codex-command") ?? null;
 if (!codexCommand && !args.has("no-codex-appserver") && system === "darwin") {
   const bundledCodex = "/Applications/ChatGPT.app/Contents/Resources/codex";
@@ -368,6 +416,7 @@ await writeAtomic(
     adbSerial,
     bluetoothHelper,
     bluetoothAddress,
+    claudeCredentialFile,
   }, null, 2)}\n`,
   0o600,
 );

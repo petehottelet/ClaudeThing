@@ -1,6 +1,6 @@
 {
   "name": "claudething",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Local-first host collector and installer for the ClaudeThing.ai Spotify Car Thing dashboard.",
   "license": "MIT",
   "author": "Pete Hottelet",

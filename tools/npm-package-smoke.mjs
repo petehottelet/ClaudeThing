@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const temporary = await mkdtemp(join(tmpdir(), "claudething-npm-"));
+const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -27,7 +28,7 @@ try {
     run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", temporary]),
   );
   const artifact = packed[0];
-  if (artifact?.name !== "claudething" || artifact?.version !== "1.1.0") {
+  if (artifact?.name !== "claudething" || artifact?.version !== manifest.version) {
     throw new Error(`Unexpected package identity: ${JSON.stringify(artifact)}`);
   }
 
@@ -36,6 +37,7 @@ try {
     "bin/claudething.mjs",
     "release/collector/collector.cjs",
     "release/device-ui/index.html",
+    "release/install/authorize-claude.mjs",
     "release/install/install.mjs",
     "release/install/uninstall.mjs",
     "release/device/device-tool.mjs",
@@ -66,8 +68,11 @@ try {
   if (!installHelp.includes("--pairing-token-file")) {
     throw new Error("Installed CLI cannot reach the packaged host installer.");
   }
+  const authorizeHelp = run(process.execPath, [cli, "authorize-claude", "--help"]);
+  if (!authorizeHelp.includes("authorize-claude")) {
+    throw new Error("Installed CLI cannot reach the packaged Claude authorizer.");
+  }
   const version = run(process.execPath, [cli, "--version"]).trim();
-  const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   if (version !== manifest.version) throw new Error(`Installed CLI reported ${version}, expected ${manifest.version}.`);
 
   console.log(

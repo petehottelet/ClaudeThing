@@ -27,6 +27,7 @@ import {
   type TokenSummary,
   type UsageHistoryDay,
 } from "@carthing/contracts";
+import { COLLECTOR_VERSION } from "../config";
 import { isObject, pickField, pickNumber, toFiniteNumber } from "../util";
 import { parseCodexRateLimits } from "./codex-common";
 
@@ -190,7 +191,7 @@ export class CodexAppServerAdapter {
       transport.onClose(() => this.handleFailure(generation));
 
       await this.request("initialize", {
-        clientInfo: { name: "carthing-collector", title: "Car Thing Collector", version: "1.1.0" },
+        clientInfo: { name: "carthing-collector", title: "Car Thing Collector", version: COLLECTOR_VERSION },
       });
       this.sendNotification("initialized", {});
       this.backoffMs = this.opts.backoff?.initialMs ?? 1000;

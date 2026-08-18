@@ -78,11 +78,18 @@ function credentialFilePath(): string {
   return path.join(os.homedir(), ".claude", ".credentials.json");
 }
 
-async function loadCredentialStore(): Promise<CredentialStore | null> {
+async function loadCredentialStore(explicitFilePath: string | null = null): Promise<CredentialStore | null> {
   let raw: string | null = null;
   let location: CredentialStore["location"] | null = null;
 
-  if (process.platform === "darwin") {
+  if (explicitFilePath) {
+    try {
+      raw = (await readFile(explicitFilePath, "utf8")).trim();
+      location = { kind: "file", filePath: explicitFilePath };
+    } catch {
+      return null;
+    }
+  } else if (process.platform === "darwin") {
     raw = await execSecurity(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"]);
     if (raw !== null) {
       const metadata = await execSecurity(["find-generic-password", "-s", KEYCHAIN_SERVICE]);
@@ -138,8 +145,8 @@ function credentialFromStore(store: CredentialStore): OauthCredential {
 }
 
 /** Read the CLI credential without exposing its raw document. Never throws. */
-export async function readCliCredential(): Promise<OauthCredential> {
-  const store = await loadCredentialStore();
+export async function readCliCredential(explicitFilePath: string | null = null): Promise<OauthCredential> {
+  const store = await loadCredentialStore(explicitFilePath);
   return store ? credentialFromStore(store) : { ...absent };
 }
 
@@ -212,9 +219,10 @@ export async function refreshCliCredential(
   fetchImpl: typeof fetch,
   nowMs: number,
   force = false,
+  explicitFilePath: string | null = null,
 ): Promise<CredentialRefreshResult> {
   // Re-read at refresh time so a simultaneous CLI refresh always wins.
-  const store = await loadCredentialStore();
+  const store = await loadCredentialStore(explicitFilePath);
   if (!store) return { kind: "expired" };
   const current = credentialFromStore(store);
   if (

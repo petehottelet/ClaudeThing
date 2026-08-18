@@ -67,6 +67,15 @@ npx claudething@latest install
 
 This command configures the local collector and startup service; it never flashes the device. Firmware images remain deliberately separate under [GitHub Releases](https://github.com/petehottelet/ClaudeThing/releases).
 
+On macOS, authorize unattended Claude quota updates once before installation:
+
+```sh
+npx claudething@latest authorize-claude
+npx claudething@latest install
+```
+
+The first command asks for one explicit Keychain approval, then stores an owner-only collector credential cache. Automatic startup reads that private file instead of repeatedly opening macOS Keychain dialogs. The cache remains on the host, is removed by the uninstaller, and is never sent to the display.
+
 ## See it in action
 
 | Dashboard picker | AI usage by day |

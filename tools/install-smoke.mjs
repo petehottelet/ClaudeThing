@@ -16,6 +16,7 @@ const temporary = await mkdtemp(path.join(os.tmpdir(), "carthing-install-smoke-"
 const installRoot = path.join(temporary, "installed");
 const seed = path.join(temporary, "shared.token");
 const wrongSeed = path.join(temporary, "wrong.token");
+const claudeCredential = path.join(temporary, "claude-credentials.json");
 const fakeHome = path.join(temporary, "home");
 const token = "install_smoke_shared_token_12345678901234567890";
 
@@ -53,8 +54,21 @@ try {
     "install_smoke_different_token_123456789012345678\n",
     { encoding: "utf8", mode: 0o600 },
   );
+  await writeFile(
+    claudeCredential,
+    `${JSON.stringify({ claudeAiOauth: {
+      accessToken: "smoke-access-token",
+      refreshToken: "smoke-refresh-token-1234567890",
+      expiresAt: Date.now() + 60_000,
+    } })}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
 
-  const first = run(["--adb-command", "/opt/example/adb", "--adb-serial", "SMOKE-CARTHING"]);
+  const first = run([
+    "--adb-command", "/opt/example/adb",
+    "--adb-serial", "SMOKE-CARTHING",
+    "--claude-credential-file", claudeCredential,
+  ]);
   if (first.status !== 0) throw new Error(first.stderr || first.stdout || "installer failed");
   if (first.stdout.includes(token)) throw new Error("installer exposed the pairing token in routine output");
   if ((await readFile(path.join(installRoot, "pairing.token"), "utf8")).trim() !== token) {
@@ -70,6 +84,9 @@ try {
   const firstManifest = JSON.parse(await readFile(installManifest, "utf8"));
   if (firstManifest.adbCommand !== "/opt/example/adb" || firstManifest.adbSerial !== "SMOKE-CARTHING") {
     throw new Error("installer did not persist the ADB startup configuration");
+  }
+  if (firstManifest.claudeCredentialFile !== claudeCredential) {
+    throw new Error("installer did not persist the Claude credential cache path");
   }
   if (process.platform === "darwin" && firstManifest.bluetoothHelper !== path.join(
     installRoot,
@@ -106,6 +123,9 @@ try {
   if (secondManifest.bluetoothHelper !== firstManifest.bluetoothHelper) {
     throw new Error("idempotent reinstall lost the Bluetooth startup configuration");
   }
+  if (secondManifest.claudeCredentialFile !== firstManifest.claudeCredentialFile) {
+    throw new Error("idempotent reinstall lost the Claude credential cache path");
+  }
   if (!(await readFile(dashboardConfig, "utf8")).includes('"rotationSeconds": 17')) {
     throw new Error("reinstall replaced the human-edited dashboard config");
   }
@@ -141,7 +161,7 @@ try {
   if ((await readFile(path.join(installRoot, "pairing.token"), "utf8")).trim() !== token) {
     throw new Error("mismatch check changed the installed token");
   }
-  console.log("install smoke: token sharing, dashboard-config preservation, staged copy, transport persistence, status-line preservation, idempotence, and mismatch refusal passed");
+  console.log("install smoke: token sharing, credential-cache persistence, dashboard-config preservation, staged copy, transport persistence, status-line preservation, idempotence, and mismatch refusal passed");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }
